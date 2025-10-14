@@ -52,15 +52,18 @@ export const userAPI = {
   getKnowledgeBase: () => api.get('/api/user/kb'),
   saveKnowledgeBase: (kb: string) => api.post('/api/user/kb', { kb }),
   deleteKnowledgeBase: () => api.delete('/api/user/kb'),
-  
   // Slack Configuration
   getSlackConfig: () => api.get('/api/user/slack-config'),
   saveSlackConfig: (slackBotToken: string, slackBotId: string, slackChannel: string) =>
     api.post('/api/user/slack-config', { slackBotToken, slackBotId, slackChannel }),
     
-  // Profile and Settings
+  // Profile  // User Profile
   getProfile: () => api.get('/api/user/profile'),
-  updateSettings: (settings: any) => api.post('/api/user/settings', settings),
+  updateSettings: (settings: any) => api.post('/api/user/settings', { settings }),
+  
+  // Widget Customization
+  getWidgetConfig: () => api.get('/api/user/widget-config'),
+  saveWidgetConfig: (config: any) => api.post('/api/user/widget-config', { config }),
 };
 
 // Chat API endpoints - /api/chat/*
