@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import axios from 'axios';
+import { userAPI } from '@/lib/api';
 import { Copy, Check } from 'lucide-react';
 
 const sampleKb = {
@@ -44,7 +44,7 @@ export function KnowledgeBase() {
   useEffect(() => {
     const fetchKb = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/web/kb", { withCredentials: true });
+        const response = await userAPI.getKnowledgeBase();
         if (response.data.success && response.data.kb) {
           const content = typeof response.data.kb === 'string' 
             ? response.data.kb 
@@ -69,7 +69,7 @@ export function KnowledgeBase() {
         setIsSaving(false);
         return;
       }
-      await axios.post("http://localhost:3001/web/add-kb", { kb: kbContent }, { withCredentials: true });
+      await userAPI.saveKnowledgeBase(kbContent);
     } catch (error) {
       console.error("Error saving knowledge base:", error);
       alert("Failed to save knowledge base. Make sure the JSON is valid.")

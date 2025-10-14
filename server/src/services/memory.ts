@@ -51,29 +51,15 @@ export class MemoryService {
         }
     }
 
-    clearConversation(conversationId: string): void {
-        delete this.conversations[conversationId];
-    }
+  
 
-    getConversationMessages(conversationId: string): SimpleMessage[] {
-        return this.conversations[conversationId] || [];
-    }
+   
 
-    getAllConversations(): Record<string, SimpleMessage[]> {
-        return { ...this.conversations };
-    }
+   
+    
 
-    getConversationIds(): string[] {
-        return Object.keys(this.conversations);
-    }
 
-    hasConversation(conversationId: string): boolean {
-        return conversationId in this.conversations;
-    }
-
-    getMessageCount(conversationId: string): number {
-        return this.conversations[conversationId]?.length || 0;
-    }
+    
 
     /**
      * Store arbitrary JSON data with an optional TTL (in seconds)
@@ -107,72 +93,15 @@ export class MemoryService {
         return key in this.userData;
     }
 
-    /**
-     * Remove data from the store
-     * @param key Key to remove
-     */
-    deleteUserData(key: string): void {
-        delete this.userData[key];
-    }
+   
+    
 
-    /**
-     * Clear all user data
-     */
-    clearAllUserData(): void {
-        this.userData = {};
-    }
+    
+  
+  
 
-    /**
-     * Get all stored data keys
-     * @returns Array of all keys in the user data store
-     */
-    getUserDataKeys(): string[] {
-        this.cleanupExpiredData();
-        return Object.keys(this.userData);
-    }
 
-    /**
-     * Set escalated messages for a conversation
-     * @param conversationId The conversation ID
-     * @param messages Array of escalated messages to store
-     */
-    setEscalatedMessages(conversationId: string, messages: string[]): void {
-        const userData = this.getUserData(conversationId) || {};
-        userData.escalatedMessages = messages;
-        this.setUserData(conversationId, userData);
-    }
-
-    /**
-     * Add an escalated message for a conversation
-     * @param conversationId The conversation ID
-     * @param message The escalated message to add
-     */
-    addEscalatedMessage(conversationId: string, message: any): void {
-        const userData = this.getUserData(conversationId) || {};
-        if (!userData.escalatedMessages) {
-            userData.escalatedMessages = [];
-        }
-        userData.escalatedMessages.push(message);
-        this.setUserData(conversationId, userData);
-    }
-
-    removeAnEscalatedMessage(conversationId: string, message: any): void {
-        const userData = this.getUserData(conversationId) || {};
-        if (userData.escalatedMessages) {
-            userData.escalatedMessages = userData.escalatedMessages.filter((m: any) => m.ts !== message.ts);
-            this.setUserData(conversationId, userData);
-        }
-    }
-
-    /**
-     * Get escalated messages for a conversation
-     * @param conversationId The conversation ID
-     * @returns Array of escalated messages or empty array if none exist
-     */
-    getEscalatedMessages(conversationId: string): string[] {
-        const userData = this.getUserData(conversationId);
-        return userData?.escalatedMessages || [];
-    }
+  
 
     /**
      * Clean up expired data entries

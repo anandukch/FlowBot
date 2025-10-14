@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from 'react';
-import axios from 'axios';
+import { authAPI } from '@/lib/api';
 
 const AuthPage = () => {
   const [email, setEmail] = useState('');
@@ -10,11 +10,7 @@ const AuthPage = () => {
     const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/web/signup`,
-                { email, password },
-                { withCredentials: true }
-            );
+      const response = await authAPI.signUp(email, password);
       if (response.data.success) {
         console.log('Signed up successfully:', response.data.user);
         window.location.href = '/knowledge'; // Redirect to dashboard or home
@@ -30,11 +26,7 @@ const AuthPage = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-                `${process.env.NEXT_PUBLIC_API_URL}/web/signin`,
-                { email, password },
-                { withCredentials: true }
-            );
+      const response = await authAPI.signIn(email, password);
       if (response.data.success) {
         // Handle successful login, e.g., redirect to dashboard
         console.log('Signed in successfully:', response.data.user);
@@ -49,11 +41,11 @@ const AuthPage = () => {
     }
   };
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg border border-border shadow-lg">
         <div className="text-center">
-                    <h2 className="text-3xl font-extrabold text-gray-900">{isSignUp ? 'Sign Up' : 'Sign In'}</h2>
-          <p className="mt-2 text-sm text-gray-600">
+                    <h2 className="text-3xl font-extrabold text-foreground">{isSignUp ? 'Sign Up' : 'Sign In'}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             {isSignUp ? 'Create an account to get started' : 'Sign in to your account to continue'}
           </p>
         </div>
@@ -72,7 +64,7 @@ const AuthPage = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-border placeholder-muted-foreground text-foreground bg-input rounded-t-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring focus:z-10 sm:text-sm"
                 placeholder="Email address"
               />
             </div>
@@ -88,7 +80,7 @@ const AuthPage = () => {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-border placeholder-muted-foreground text-foreground bg-input rounded-b-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring focus:z-10 sm:text-sm"
                 placeholder="Password"
               />
             </div>
@@ -97,14 +89,14 @@ const AuthPage = () => {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring transition-colors"
             >
               {isSignUp ? 'Sign Up' : 'Sign In'}
             </button>
           </div>
         </form>
         <div className="text-sm text-center">
-          <a href="#" onClick={() => setIsSignUp(!isSignUp)} className="font-medium text-indigo-600 hover:text-indigo-500">
+          <a href="#" onClick={() => setIsSignUp(!isSignUp)} className="font-medium text-primary hover:text-primary/80 transition-colors">
             {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
           </a>
         </div>

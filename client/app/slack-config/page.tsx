@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { userAPI } from "@/lib/api";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,7 +19,7 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/web/slack-config`, { withCredentials: true });
+        const response = await userAPI.getSlackConfig();
         if (response.data.success && response.data.user) {
           const { config, agentId } = response.data.user;
           setSlackBotToken(config?.slackBotToken || "");
@@ -36,11 +36,7 @@ export default function IntegrationsPage() {
 
   const handleSave = async () => {
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/web/slack-config`,
-        { slackBotToken, slackBotId, slackChannel },
-        { withCredentials: true }
-      );
+      const response = await userAPI.saveSlackConfig(slackBotToken, slackBotId, slackChannel);
       if (response.data.success) {
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 2000);

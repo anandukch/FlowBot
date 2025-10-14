@@ -745,7 +745,7 @@
     });
   
     function connectSSE() {
-      const eventSource = new EventSource(`http://localhost:3001/api/events/${userId}`);
+      const eventSource = new EventSource(`http://localhost:3001/api/chat/events/${userId}`);
       
       eventSource.onmessage = (event) => {
         try {
@@ -773,23 +773,6 @@
       appendMessage('assistant', 'Hey I am Clara 👋 How can I help you today?');
     }, 1500);
   
-    if (chatIcon) {
-      chatIcon.addEventListener('click', async () => {
-        openChat();
-        try {
-          const res = await fetch('http://localhost:3001/api/trigger', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: userId, agentId: agentId })
-          });
-  
-          if (!res.ok) {
-            console.error('Failed to trigger workflow:', await res.text());
-          }
-        } catch (err) {
-          console.error('Error triggering workflow:', err);
-        }
-      });
-    }
+    
   })();
   

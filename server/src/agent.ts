@@ -1,44 +1,71 @@
-import { AgentExecutor, createStructuredChatAgent } from "langchain/agents";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { pull } from "langchain/hub";
-import { tools } from "./tools";
+import Groq from "groq-sdk";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { MemoryService } from "./services/memory";
+import userModel from "./models/user.modesl";
+import { workflowEvents } from "../index";
 
 export interface AgentResult {
     output: string;
-    intermediateSteps: any[];
+    needsEscalation: boolean;
+    escalationReason?: string;
     success: boolean;
     error?: string;
 }
 
-import { SystemMessagePromptTemplate, HumanMessagePromptTemplate } from "@langchain/core/prompts";
-import { SystemMessage } from "@langchain/core/messages";
-import userModel from "./models/user.modesl";
+// Groq configuration
+const GROQ_CONFIG = {
+    MODEL: "llama-3.1-70b-versatile",
+    MAX_TOKENS: 1000,
+    TEMPERATURE: 0.3,
+    TIMEOUT: 30000,
+    MAX_RETRIES: 3,
+};
 
-export const buildCustomPrompt = async (KB: any) => {
-    const basePrompt = await pull<ChatPromptTemplate>("hwchase17/structured-chat-agent");
+// Response schema for structured output
+const agentResponseSchema = z.object({
+    response: z.string().describe("The response to send to the user"),
+    needsEscalation: z.boolean().describe("Whether this conversation needs to be escalated to human support"),
+    escalationReason: z.string().optional().describe("Reason for escalation if needsEscalation is true"),
+    confidence: z.number().min(0).max(1).describe("Confidence level in the response (0-1)")
+});
 
-    return ChatPromptTemplate.fromMessages([
-        new SystemMessage(
-            `You are a customer service agent for ${KB?.store?.name} (${KB?.store?.domain}).
-            Only use the information provided in the Knowledge Base (KB) JSON below.
-            
-            Knowledge Base (KB):
-            ${JSON.stringify(KB, null, 2)}
+const generateSystemPrompt = (KB: any): string => {
+    return `You are a customer service agent for ${KB?.store?.name || 'our company'} (${KB?.store?.domain || 'our website'}).
 
-        Tool Use Instructions:
-         - Use 'send_chat_message' tool to send a message to customer support ONLY if you think we need to escalate the chat to customer support. (Otherwise don't use this tool)
-         `
-        ),
-        ...basePrompt.promptMessages,
-    ]);
+IMPORTANT: Only use the information provided in the Knowledge Base (KB) below to answer questions.
+
+Knowledge Base (KB):
+${JSON.stringify(KB, null, 2)}
+
+RESPONSE GUIDELINES:
+1. If you can answer the question using the KB information, provide a helpful response
+2. If the question is outside your KB knowledge, set needsEscalation to true
+3. If the user seems frustrated or needs complex help, set needsEscalation to true
+4. Always be polite, professional, and helpful
+5. Keep responses concise but informative
+
+ESCALATION CRITERIA:
+- Question not covered in KB
+- User requests human support
+- Complex technical issues
+- Billing/payment issues
+- Complaints or frustrated customers
+- Refund requests
+- Account-specific issues
+
+You must respond with a JSON object containing:
+- response: Your message to the user
+- needsEscalation: boolean (true if human support needed)
+- escalationReason: string (if escalation needed, explain why)
+- confidence: number (0-1, how confident you are in your response)`;
 };
 
 export class AgentService {
-    private agentExecutor: AgentExecutor | null = null;
-    // private memoryService: MemoryService;
+    private client: Groq | null = null;
+    private userKB: any = null;
 
-    constructor(private llm: any, private memoryService: MemoryService, private sseConnections: Map<string, any>) {}
+    constructor(private memoryService: MemoryService, private sseConnections: Map<string, any>) {}
 
     async initialize(agentId: string) {
         try {
@@ -46,35 +73,24 @@ export class AgentService {
             if (!user) {
                 throw new Error("User not found");
             }
-            const KB = user.kb;
-            // Pull the structured chat agent prompt from the hub
-            const prompt = await buildCustomPrompt(KB);
-
-            // Create the structured chat agent
-            const agent = await createStructuredChatAgent({
-                llm: this.llm,
-                tools,
-                prompt,
+            
+            this.userKB = user.kb;
+            
+            // Initialize Groq client
+            this.client = new Groq({
+                apiKey: process.env.GROQ_API_KEY,
+                timeout: GROQ_CONFIG.TIMEOUT,
+                maxRetries: GROQ_CONFIG.MAX_RETRIES,
             });
 
-            // Create the agent executor
-            this.agentExecutor = new AgentExecutor({
-                agent,
-                tools,
-                verbose: true,
-                maxIterations: 5,
-                returnIntermediateSteps: true,
-            });
-
-            console.log("🤖 Agent initialized successfully");
+            console.log("🤖 Groq Agent initialized successfully");
         } catch (error) {
-            console.error("Failed to initialize agent:", error);
             throw error;
         }
     }
 
     async invoke(input: string, conversationId: string = "default", agentId?: string): Promise<AgentResult> {
-        if (!this.agentExecutor) {
+        if (!this.client) {
             throw new Error("Agent not initialized. Call initialize() first.");
         }
 
@@ -82,66 +98,94 @@ export class AgentService {
             if (!this.memoryService.hasUserData(conversationId)) {
                 throw new Error("No user data found for conversationId: " + conversationId);
             }
-            // Add user message to conversation history
+
             this.memoryService.addMessage(conversationId, "user", input);
 
-            // Get conversation history for context
             const history = this.memoryService.getConversationHistory(conversationId);
-
-            // Create input with history context
-            const userChat = this.memoryService.getUserData(conversationId);
-            const agentInput = history
-                ? `Previous conversation:\n${history} \n\nCurrent message: ${input}`
+            
+            const contextMessage = history
+                ? `Previous conversation:\n${history}\n\nCurrent message: ${input}`
                 : input;
 
-            // Execute the agent
-            const result = await this.agentExecutor.invoke({
-                input: agentInput,
+            const completion = await this.client.chat.completions.create({
+                messages: [
+                    {
+                        role: 'system',
+                        content: generateSystemPrompt(this.userKB),
+                    },
+                    { 
+                        role: 'user', 
+                        content: contextMessage 
+                    },
+                ],
+                model: GROQ_CONFIG.MODEL,
+                max_tokens: GROQ_CONFIG.MAX_TOKENS,
+                temperature: GROQ_CONFIG.TEMPERATURE,
+                response_format: {
+                    type: 'json_schema',
+                    json_schema: {
+                        name: 'agentResponse',
+                        schema: zodToJsonSchema(agentResponseSchema),
+                    },
+                },
             });
 
-            // If escalated then add to messages
-            console.log("Intermediate steps:", result.intermediateSteps);
-
-            for (const step of result.intermediateSteps) {
-                if (step.action.tool === "send_chat_message") {
-                    try {
-                        const toolOutput = JSON.parse(step.observation);
-                        console.log("Tool output:", toolOutput);
-                        if (toolOutput.status === "escalated") {
-                            const data = {
-                                type: "new_message",
-                                role: "assistant",
-                                isSupport: true, // Mark as support message
-                                content: "Provide your email address and we will get back to you.",
-                                timestamp: new Date().toISOString(),
-                            };
-                            const connection = this.sseConnections.get(conversationId);
-                            if (connection) {
-                                connection.write(`data: ${JSON.stringify(data)}\n\n`);
-                            }
-                        }
-                    } catch (error) {
-                        console.error("Error parsing tool output:", error);
-                    }
-                }
+            const responseContent = completion.choices[0]?.message?.content;
+            if (!responseContent) {
+                throw new Error("No response from Groq");
             }
 
-            // Add assistant response to conversation history
-            this.memoryService.addMessage(conversationId, "assistant", result.output);
+            const parsedResponse = JSON.parse(responseContent);
+            const validatedResponse = agentResponseSchema.parse(parsedResponse);
+
+            this.memoryService.addMessage(conversationId, "assistant", validatedResponse.response);
+            if (validatedResponse.needsEscalation) {
+                await this.handleEscalation(conversationId, input, validatedResponse.escalationReason || "User needs human support");
+            }
 
             return {
-                output: result.output,
-                intermediateSteps: result.intermediateSteps || [],
+                output: validatedResponse.response,
+                needsEscalation: validatedResponse.needsEscalation,
+                escalationReason: validatedResponse.escalationReason,
                 success: true,
             };
+
         } catch (error) {
-            console.error("Agent execution error:", error);
+            console.error("Error invoking Groq agent:", error);
             return {
-                output: "I apologize, but I encountered an error while processing your request. Please try again.",
-                intermediateSteps: [],
+                output: "I'm sorry, I encountered an error. Please try again or contact our support team.",
+                needsEscalation: false,
                 success: false,
                 error: error instanceof Error ? error.message : "Unknown error",
             };
+        }
+    }
+
+    private async handleEscalation(conversationId: string, originalMessage: string, reason: string) {
+        try {
+            // Generate unique workflow ID
+            const workflowId = `wf_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            
+            console.log(`🚨 Escalating conversation ${conversationId}: ${reason}`);
+            
+            // Emit escalation event
+            workflowEvents.emit('workflow:escalated', {
+                workflowId,
+                conversationId,
+                originalMessage,
+                escalationReason: reason,
+                timestamp: new Date().toISOString()
+            });
+
+            // Add escalation message to conversation
+            this.memoryService.addMessage(
+                conversationId, 
+                "assistant", 
+                `Escalated to human support: ${reason}`
+            );
+
+        } catch (error) {
+            console.error("Error handling escalation:", error);
         }
     }
 }

@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { ChatOpenAI } from "@langchain/openai";
 import { AgentService } from "../agent";
 import { MemoryService } from "../services/memory";
-import userModel from "../models/user.modesl";
+import { workflowEvents } from "../../index";
 
-export function createRoutes(llm: ChatOpenAI): Router {
+export function createChatRoutes(): Router {
     const router = Router();
     const memoryService = new MemoryService();
     const sseConnections = new Map();
-    const agentService = new AgentService(llm, memoryService, sseConnections);
+    
+    const agentService = new AgentService(memoryService, sseConnections);
 
     // Initialize the agent service
     let agentInitialized = false;
@@ -21,7 +21,7 @@ export function createRoutes(llm: ChatOpenAI): Router {
     };
 
     // Main chat endpoint
-    router.post("/chat", async (req, res) => {
+    router.post("/", async (req, res) => {
         try {
             const { message, conversationId = "default", agentId } = req.body;
 
@@ -72,11 +72,8 @@ export function createRoutes(llm: ChatOpenAI): Router {
                 response: result.output,
                 conversationId,
                 success: result.success,
-                intermediateSteps: result.intermediateSteps.map((step: any) => ({
-                    action: step.action?.tool || "unknown",
-                    input: step.action?.toolInput || {},
-                    output: step.observation || "",
-                })),
+                needsEscalation: result.needsEscalation,
+                escalationReason: result.escalationReason,
                 ...(result.error && { error: result.error }),
             });
         } catch (error) {
@@ -88,14 +85,7 @@ export function createRoutes(llm: ChatOpenAI): Router {
         }
     });
 
-    // Health check
-    router.get("/health", (req, res) => {
-        res.json({
-            status: "OK",
-            agentInitialized,
-        });
-    });
-
+    // Server-Sent Events for real-time updates
     router.get("/events/:userId", (req, res) => {
         const { userId } = req.params;
 
@@ -130,8 +120,41 @@ export function createRoutes(llm: ChatOpenAI): Router {
         }
     }
 
-    router.post("/webhook", async (req, res) => {
-        res.status(200).json({ success: true });
+    // 🚀 Event-driven SSE handlers
+    // Listen for workflow events and automatically send via SSE
+    workflowEvents.on('workflow:escalated', (data: any) => {
+        console.log('📤 Workflow escalated:', data);
+        sendToUser(data.conversationId, {
+            type: 'workflow_escalated',
+            message: 'Your request has been escalated to our team',
+            conversationId: data.conversationId
+        });
+    });
+
+    workflowEvents.on('workflow:approved', (data: any) => {
+        console.log('✅ Workflow approved:', data);
+        sendToUser(data.conversationId, {
+            type: 'workflow_approved',
+            message: 'Your request has been approved!',
+            response: data.response
+        });
+    });
+
+    workflowEvents.on('workflow:rejected', (data: any) => {
+        console.log('❌ Workflow rejected:', data);
+        sendToUser(data.conversationId, {
+            type: 'workflow_rejected',
+            message: 'Your request was not approved',
+            reason: data.reason
+        });
+    });
+
+    // Health check
+    router.get("/health", (req, res) => {
+        res.json({
+            status: "OK",
+            agentInitialized,
+        });
     });
 
     return router;

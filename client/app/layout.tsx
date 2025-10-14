@@ -29,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${playfair.variable} ${sourceSans.variable} antialiased`}>
-      <body className="font-sans">{children}</body>
+    <html lang="en" className={`${playfair.variable} ${sourceSans.variable} antialiased dark`}>
+      <body className="font-sans bg-background text-foreground">{children}</body>
     </html>
   )
 }

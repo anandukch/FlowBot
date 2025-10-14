@@ -3,27 +3,44 @@ import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
 import cookieParser from "cookie-parser";
-import { ChatOpenAI } from "@langchain/openai";
-import { createRoutes } from "./src/routes/routes";
-import { createRoutes as createWebRoutes } from "./src/routes/web.routes";
+import { createAllRoutes } from "./src/routes";
 import path from "path";
 import { connectDatabase } from "./src/db";
+import { EventEmitter } from "events";
 
+// 🚀 Global workflow event emitter - accessible throughout the app
+export const workflowEvents = new EventEmitter();
 
+// // 🚀 Global event listeners - centralized logging and monitoring
+// workflowEvents.on('workflow:escalated', (data: any) => {
+//     console.log(`🚨 [GLOBAL] Workflow escalated: ${data.workflowId} for conversation: ${data.conversationId}`);
+//     // TODO: Add to analytics, metrics, logging service
+// });
+
+// workflowEvents.on('workflow:approved', (data: any) => {
+//     console.log(`✅ [GLOBAL] Workflow approved: ${data.workflowId}`);
+//     // TODO: Update database, send notifications, trigger actions
+// });
+
+// workflowEvents.on('workflow:rejected', (data: any) => {
+//     console.log(`❌ [GLOBAL] Workflow rejected: ${data.workflowId}`);
+//     // TODO: Log rejection reasons, update metrics
+// });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // For now, we'll allow all origins. In a production environment,
-      // you should replace this with a check against a whitelist of allowed origins.
-      callback(null, true);
-    },
-    credentials: true,
-  })
-);
+// Simple CORS - allow all origins
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow any origin
+    callback(null, origin || "*");
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -35,16 +52,9 @@ app.get("/widget.js", (req, res) => {
     res.sendFile(path.join(__dirname, "public/bot.js"));
 });
 
-const llm = new ChatOpenAI({
-    openAIApiKey: process.env.OPENAI_API_KEY,
-    modelName: "gpt-4o",
-    temperature: 0.7,
-});
-
 // Register routes with agent-based architecture
-const apiRoutes = createRoutes(llm);
+const apiRoutes = createAllRoutes();
 app.use("/api", apiRoutes);
-app.use("/web", createWebRoutes());
 
 connectDatabase()
     .then(() => {
