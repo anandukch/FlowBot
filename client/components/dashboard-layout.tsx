@@ -5,12 +5,12 @@ import type React from "react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Bot, Brain, Settings, Users, FileText, X, Zap, Database, Target, Code } from "lucide-react"
+import { Bot, Brain, Settings, Users, FileText, X, Zap, Database, Target, Code, LogOut, User } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
 
 const sidebarItems = [
-  { icon: FileText, label: "Prompt", href: "/", active: false },
   // { icon: Zap, label: "Tools", href: "/tools", active: false },
   { icon: Brain, label: "Knowledge", href: "/knowledge", active: false },
   // { icon: Target, label: "Triggers", href: "/triggers", active: false },
@@ -29,6 +29,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
+  const { user, logout } = useAuth()
 
   const getPageTitle = () => {
     const currentItem = sidebarItems.find((item) => item.href === pathname)
@@ -85,6 +86,40 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               )
             })}
           </nav>
+
+          {/* User Info & Logout */}
+          <div className="p-3 border-t border-sidebar-border">
+            <div className="flex items-center gap-3 px-3 py-2 text-sm text-sidebar-foreground">
+              {user?.picture ? (
+                <img 
+                  src={user.picture} 
+                  alt="Profile" 
+                  className="w-6 h-6 rounded-full"
+                />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-medium">
+                  {user?.name || user?.email || 'User'}
+                </p>
+                {user?.name && (
+                  <p className="truncate text-xs text-sidebar-foreground/70">
+                    {user.email}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-3 px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent mt-2"
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </aside>
 

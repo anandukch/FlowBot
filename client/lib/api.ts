@@ -36,15 +36,14 @@ api.interceptors.response.use(
 
 // Auth API endpoints - /api/auth/*
 export const authAPI = {
-  signIn: (email: string, password: string) =>
-    api.post('/api/auth/signin', { email, password }),
-  
-  signUp: (email: string, password: string) =>
-    api.post('/api/auth/signup', { email, password }),
-    
   signOut: () => api.post('/api/auth/signout'),
   
   getMe: () => api.get('/api/auth/me'),
+  
+  getTokens: () => api.get('/api/auth/tokens'),
+  
+  // Google OAuth - redirect handled by server
+  googleAuth: () => `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`,
 };
 
 // User API endpoints - /api/user/*

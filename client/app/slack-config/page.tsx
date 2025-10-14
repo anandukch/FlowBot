@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Check } from "lucide-react"
 
 export default function IntegrationsPage() {
@@ -50,7 +51,8 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <DashboardLayout>
+    <ProtectedRoute>
+      <DashboardLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-semibold text-foreground mb-2">Integrations</h1>
@@ -113,6 +115,7 @@ export default function IntegrationsPage() {
           </CardFooter>
         </Card>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedRoute>
   )
 }

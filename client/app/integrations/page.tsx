@@ -4,8 +4,9 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 import { Copy, Check } from "lucide-react"
-import axios from "axios"
+import { userAPI } from "@/lib/api"
 
 export default function IntegrationsPage() {
   
@@ -20,7 +21,7 @@ export default function IntegrationsPage() {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/web/slack-config`, { withCredentials: true });
+        const response = await userAPI.getSlackConfig();
         if (response.data.success && response.data.user) {
           const { config, agentId } = response.data.user;
           // setSlackBotToken(config?.slackBotToken || "");
@@ -63,7 +64,8 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <DashboardLayout>
+    <ProtectedRoute>
+      <DashboardLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-semibold text-foreground mb-2">Integrations</h1>
@@ -91,6 +93,7 @@ export default function IntegrationsPage() {
           </CardFooter>
         </Card>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedRoute>
   )
 }
