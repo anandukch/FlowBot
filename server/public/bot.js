@@ -6,32 +6,82 @@
       console.error('Chat widget: data-agent-id attribute is missing from script tag.');
       return;
     }
-  
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-    const shadowRoot = host.attachShadow({ mode: 'open' });
+
+    // Default configuration (fallback)
+    let widgetConfig = {
+      primaryColor: '#000000',
+      secondaryColor: '#ffffff',
+      backgroundColor: '#ffffff',
+      textColor: '#37352f',
+      headerColor: '#ffffff',
+      borderRadius: 10,
+      shadowIntensity: 15,
+      width: 600,
+      height: 700,
+      position: 'bottom-right',
+      agentName: 'Lyzr Assistant',
+      welcomeMessage: 'Hey I am Lyzr Assistant 👋 How can I help you today?',
+      avatarUrl: '',
+      showAvatar: true,
+      showTypingIndicator: true,
+      enableSounds: false,
+      fontFamily: 'system-ui',
+      fontSize: 14,
+      animationSpeed: 'normal'
+    };
+
+    // Fetch user's widget configuration
+    const fetchWidgetConfig = async () => {
+      try {
+        const response = await fetch(`http://localhost:3001/api/widget/config/${agentId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.config) {
+            widgetConfig = { ...widgetConfig, ...data.config };
+          }
+        }
+      } catch (error) {
+        console.log('Using default widget configuration');
+      }
+    };
+
+    const initializeWidget = async () => {
+      await fetchWidgetConfig();
+      createWidget();
+    };
+
+    const createWidget = () => {
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      const shadowRoot = host.attachShadow({ mode: 'open' });
   
     const style = document.createElement('style');
+    const animationDuration = widgetConfig.animationSpeed === 'fast' ? '0.2s' : 
+                              widgetConfig.animationSpeed === 'slow' ? '0.6s' : 
+                              widgetConfig.animationSpeed === 'none' ? '0s' : '0.3s';
+    
     style.textContent = `
-      /* Chat Container */
+      /* Modern Chat Container */
       .chat-container {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 600px;
-        height: 700px;
-        background: #ffffff;
-        border-radius: 10px;
-        border: 1px solid #e3e3e3;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        ${widgetConfig.position.includes('bottom') ? 'bottom' : 'top'}: 24px;
+        ${widgetConfig.position.includes('right') ? 'right' : 'left'}: 24px;
+        width: ${widgetConfig.width}px;
+        height: ${widgetConfig.height}px;
+        background: ${widgetConfig.backgroundColor};
+        border-radius: ${widgetConfig.borderRadius}px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 ${widgetConfig.shadowIntensity + 12}px ${widgetConfig.shadowIntensity * 2}px rgba(0, 0, 0, 0.1), 0 ${Math.floor(widgetConfig.shadowIntensity / 2)}px ${widgetConfig.shadowIntensity}px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
         display: flex;
         flex-direction: column;
         overflow: hidden;
         z-index: 1000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+        font-family: ${widgetConfig.fontFamily}, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+        font-size: ${widgetConfig.fontSize}px;
         box-sizing: border-box;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        transform-origin: bottom right;
+        transition: all ${animationDuration} cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: ${widgetConfig.position.includes('bottom') ? 'bottom' : 'top'} ${widgetConfig.position.includes('right') ? 'right' : 'left'};
       }
   
       .chat-container.closed {
@@ -41,28 +91,29 @@
         visibility: hidden;
       }
   
-      /* Floating Chat Icon */
+      /* Modern Floating Chat Icon */
       .chat-icon {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 60px;
-        height: 60px;
-        background: #000000;
-        border-radius: 50%;
+        ${widgetConfig.position.includes('bottom') ? 'bottom' : 'top'}: 24px;
+        ${widgetConfig.position.includes('right') ? 'right' : 'left'}: 24px;
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, ${widgetConfig.primaryColor}, ${widgetConfig.primaryColor}dd);
+        border-radius: ${Math.min(widgetConfig.borderRadius + 4, 20)}px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 ${widgetConfig.shadowIntensity + 4}px ${widgetConfig.shadowIntensity * 2}px rgba(0, 0, 0, 0.15), 0 ${Math.floor(widgetConfig.shadowIntensity / 3)}px ${widgetConfig.shadowIntensity}px rgba(0, 0, 0, 0.1);
         z-index: 1001;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all ${animationDuration} cubic-bezier(0.4, 0, 0.2, 1);
         border: none;
         outline: none;
         opacity: 0;
         transform: scale(0.8);
         pointer-events: none;
         visibility: hidden;
+        backdrop-filter: blur(10px);
       }
   
       .chat-icon.visible {
@@ -73,24 +124,37 @@
       }
   
       .chat-icon:hover {
-        transform: scale(1.05);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 3px 6px rgba(0, 0, 0, 0.1);
+        transform: scale(1.05) translateY(-2px);
+        box-shadow: 0 ${widgetConfig.shadowIntensity + 8}px ${widgetConfig.shadowIntensity * 2.5}px rgba(0, 0, 0, 0.2), 0 ${widgetConfig.shadowIntensity}px ${widgetConfig.shadowIntensity * 1.5}px rgba(0, 0, 0, 0.15);
       }
   
       .chat-icon i {
-        color: white;
-        font-size: 24px;
+        color: ${widgetConfig.secondaryColor};
+        font-size: 26px;
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
       }
   
-      /* Header */
+      /* Modern Header */
       .chat-container .header {
-        background: #ffffff;
-        color: #37352f;
-        padding: 12px 16px;
+        background: linear-gradient(135deg, ${widgetConfig.headerColor}, ${widgetConfig.headerColor}f8);
+        color: ${widgetConfig.textColor};
+        padding: 20px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border-bottom: 1px solid #e9e9e7;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        backdrop-filter: blur(10px);
+        position: relative;
+      }
+      
+      .chat-container .header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.1), transparent);
       }
   
       .header-left {
@@ -100,11 +164,14 @@
       }
   
       .avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        border-radius: ${Math.min(widgetConfig.borderRadius, 12)}px;
         overflow: hidden;
         flex-shrink: 0;
+        box-shadow: 0 ${Math.floor(widgetConfig.shadowIntensity / 6)}px ${Math.floor(widgetConfig.shadowIntensity / 2)}px rgba(0, 0, 0, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        ${!widgetConfig.showAvatar ? 'display: none !important;' : ''}
       }
   
       .avatar img {
@@ -116,63 +183,72 @@
       .header-info {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
       }
   
       .chat-container .header h1 {
         margin: 0;
-        font-size: 14px;
-        font-weight: 500;
-        color: #37352f;
+        font-size: 16px;
+        font-weight: 600;
+        color: ${widgetConfig.textColor};
         line-height: 1.2;
+        letter-spacing: -0.01em;
+      }
+
+      .typing {
+        ${!widgetConfig.showTypingIndicator ? 'display: none !important;' : ''}
       }
   
       .subtext {
-        font-size: 11px;
-        color: #787774;
-        line-height: 1.2;
+        font-size: 12px;
+        color: rgba(${widgetConfig.textColor === '#ffffff' ? '255, 255, 255' : '0, 0, 0'}, 0.6);
+        line-height: 1.3;
+        font-weight: 400;
       }
   
       .chat-container .status {
-        font-size: 11px;
-        color: #65b665;
+        font-size: 12px;
+        color: #10b981;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
+        font-weight: 500;
       }
   
       .chat-container .status::before {
         content: '';
         display: block;
-        width: 6px;
-        height: 6px;
-        background: #65b665;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
       }
   
-      /* Close Button */
+      /* Modern Close Button */
       .close-chat {
-        background: none;
+        background: rgba(0, 0, 0, 0.05);
         border: none;
-        font-size: 18px;
-        color: #999999;
+        font-size: 16px;
+        color: rgba(${widgetConfig.textColor === '#ffffff' ? '255, 255, 255' : '0, 0, 0'}, 0.6);
         cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
-        transition: all 0.2s ease;
+        padding: 8px;
+        border-radius: ${Math.min(widgetConfig.borderRadius, 10)}px;
+        transition: all ${animationDuration} ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 36px;
+        backdrop-filter: blur(10px);
       }
   
       .close-chat:hover {
-        background: #f5f5f5;
-        color: #666666;
+        background: rgba(0, 0, 0, 0.1);
+        color: rgba(${widgetConfig.textColor === '#ffffff' ? '255, 255, 255' : '0, 0, 0'}, 0.8);
+        transform: scale(1.05);
       }
   
-      /* Messages Area */
+      /* Modern Messages Area */
       .chat {
         flex: 1;
         padding: 0;
@@ -180,19 +256,33 @@
         display: flex;
         flex-direction: column;
         position: relative;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.01) 0%, transparent 100%);
       }
   
       .messages {
+        flex: 1;
+        padding: 24px 20px;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
-        height: 100%;
-        overflow-y: auto;
+        gap: 16px;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      
+      .messages::-webkit-scrollbar {
+        display: none;
+      }
+  
+      .messages {
         padding: 16px;
         margin-bottom: 0;
         flex: 1;
         min-height: 0;
       }
   
+{{ ... }}
       /* Message Styles */
       .msg {
         display: flex;
@@ -290,22 +380,23 @@
       }
   
       .msg.user .bubble {
-        background: #000000;
-        color: white;
-        border-radius: 16px;
+        background: linear-gradient(135deg, ${widgetConfig.primaryColor}, ${widgetConfig.primaryColor}dd);
+        color: ${widgetConfig.secondaryColor};
+        border-radius: ${widgetConfig.borderRadius + 4}px ${widgetConfig.borderRadius + 4}px ${Math.max(widgetConfig.borderRadius - 12, 4)}px ${widgetConfig.borderRadius + 4}px;
+        box-shadow: 0 ${Math.floor(widgetConfig.shadowIntensity / 6)}px ${widgetConfig.shadowIntensity}px rgba(0, 0, 0, 0.1);
+        border: none;
       }
   
       .msg.assistant .bubble {
-        background: #ffffff;
-        color: #37352f;
-        border-radius: 16px;
-        border: 1px solid #e9e9e7;
+        background: ${widgetConfig.secondaryColor};
+        color: ${widgetConfig.textColor};
+        border-radius: ${widgetConfig.borderRadius + 4}px ${widgetConfig.borderRadius + 4}px ${widgetConfig.borderRadius + 4}px ${Math.max(widgetConfig.borderRadius - 12, 4)}px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
         white-space: pre-wrap;
         word-wrap: break-word;
         position: relative;
         overflow: visible;
-        background-image: none !important;
-        background: #ffffff !important;
+        box-shadow: 0 ${Math.floor(widgetConfig.shadowIntensity / 8)}px ${Math.floor(widgetConfig.shadowIntensity / 2)}px rgba(0, 0, 0, 0.05);
       }
   
       /* Support Message Styling */
@@ -373,37 +464,40 @@
   
       /* Message Composer */
       .composer {
-        padding: 12px 16px 16px 16px;
-        background: #ffffff;
-        display: flex;
-        gap: 8px;
+        padding: 20px 24px 24px;
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+        background: linear-gradient(135deg, ${widgetConfig.backgroundColor}, ${widgetConfig.backgroundColor}f8);
         position: relative;
-        z-index: 2;
-        flex-shrink: 0;
+        backdrop-filter: blur(10px);
       }
   
-      #chat-form {
-        width: 100%;
+      .composer form {
         position: relative;
         display: flex;
+        align-items: center;
       }
   
       #message-input {
-        padding: 15px 100px 15px 20px;
-        border-radius: 25px;
-        border: 2px solid #000000;
-        background: #ffffff;
-        color: #37352f;
+        flex: 1;
+        padding: 16px 60px 16px 20px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: ${widgetConfig.borderRadius + 14}px;
         font-size: 14px;
         outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.9);
+        color: #1f2937;
+        font-family: inherit;
+        resize: none;
+        transition: all ${animationDuration} ease;
+        box-shadow: 0 ${Math.floor(widgetConfig.shadowIntensity / 6)}px ${Math.floor(widgetConfig.shadowIntensity / 2)}px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.1);
         width: 100%;
+        backdrop-filter: blur(10px);
       }
   
       #message-input:focus {
-        border-color: #000000;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-color: ${widgetConfig.primaryColor};
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 3px ${widgetConfig.primaryColor}20;
+        background: rgba(255, 255, 255, 1);
       }
   
       #emoji-btn {
@@ -432,27 +526,30 @@
   
       #send-btn {
         position: absolute;
-        right: 6px;
+        right: 8px;
         top: 50%;
         transform: translateY(-50%);
-        padding: 8px 12px;
-        border-radius: 50%;
+        padding: 10px;
+        border-radius: ${widgetConfig.borderRadius + 6}px;
         border: 0;
-        background: #000000;
-        color: white;
+        background: linear-gradient(135deg, ${widgetConfig.primaryColor}, ${widgetConfig.primaryColor}dd);
+        color: ${widgetConfig.secondaryColor};
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.2s;
+        transition: all ${animationDuration} ease;
         font-weight: 500;
-        font-size: 14px;
-        width: 30px;
-        height: 30px;
+        font-size: 16px;
+        width: 40px;
+        height: 40px;
+        box-shadow: 0 ${Math.floor(widgetConfig.shadowIntensity / 6)}px ${Math.floor(widgetConfig.shadowIntensity / 2)}px rgba(0, 0, 0, 0.15);
       }
   
       #send-btn:hover {
-        background: #333333;
+        background: linear-gradient(135deg, ${widgetConfig.primaryColor}ee, ${widgetConfig.primaryColor}cc);
+        transform: translateY(-50%) scale(1.05);
+        box-shadow: 0 ${Math.floor(widgetConfig.shadowIntensity / 3)}px ${widgetConfig.shadowIntensity}px rgba(0, 0, 0, 0.2);
       }
   
       /* Disabled State */
@@ -525,11 +622,12 @@
     chatContainer.innerHTML = `
       <div class="header">
         <div class="header-left">
+          ${widgetConfig.showAvatar ? `
           <div class="avatar">
-            <img src="assets/Clara.png" alt="Clara Johns" />
-          </div>
+            <img src="${widgetConfig.avatarUrl || 'assets/Clara.png'}" alt="${widgetConfig.agentName}" />
+          </div>` : ''}
           <div class="header-info">
-            <h1>Clara Johns</h1>
+            <h1>${widgetConfig.agentName}</h1>
             <span class="subtext">Customer Support</span>
           </div>
         </div>
@@ -608,13 +706,13 @@
       avatar.className = 'message-avatar';
       
       const avatarImg = document.createElement('img');
-      avatarImg.src = 'assets/Clara.png';
-      avatarImg.alt = 'Clara Johns';
+      avatarImg.src = widgetConfig.avatarUrl || 'assets/Clara.png';
+      avatarImg.alt = widgetConfig.agentName;
       avatar.appendChild(avatarImg);
       
       const nameLabel = document.createElement('span');
       nameLabel.className = 'message-name';
-      nameLabel.textContent = 'Clara Johns';
+      nameLabel.textContent = widgetConfig.agentName;
       
       messageHeader.appendChild(avatar);
       messageHeader.appendChild(nameLabel);
@@ -663,20 +761,19 @@
         avatarImg.src = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face';
         avatarImg.alt = 'User';
       } else {
-        avatarImg.src = 'assets/Clara.png';
-        avatarImg.alt = 'Clara Johns';
+        avatarImg.src = widgetConfig.avatarUrl || 'assets/Clara.png';
+        avatarImg.alt = widgetConfig.agentName;
       }
       avatar.appendChild(avatarImg);
       
       const nameLabel = document.createElement('span');
       nameLabel.className = 'message-name';
-      nameLabel.textContent = role === 'user' ? 'You' : 'Clara Johns';
+      nameLabel.textContent = role === 'user' ? 'You' : widgetConfig.agentName;
       
       messageHeader.appendChild(avatar);
       messageHeader.appendChild(nameLabel);
       
       const messageContent = document.createElement('div');
-      messageContent.className = 'message-content';
       messageContent.textContent = content;
       
       bubble.appendChild(messageHeader);
@@ -770,9 +867,12 @@
     let sseConnection = connectSSE();
     
     setTimeout(() => {
-      appendMessage('assistant', 'Hey I am Clara 👋 How can I help you today?');
+      appendMessage('assistant', widgetConfig.welcomeMessage);
     }, 1500);
-  
     
+    }; // End of createWidget function
+    
+    // Initialize the widget
+    initializeWidget();
   })();
   

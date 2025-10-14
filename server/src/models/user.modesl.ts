@@ -4,27 +4,29 @@ export interface IUser extends Document {
     email: string;
     password?: string;
     agentId: string;
-    kb: string;
-    config: {
-        slackBotToken?: string;
-        slackBotId?: string;
-        slackChannel?: string;
-    };
+    googleId?: string;
+    name?: string;
+    picture?: string;
+    kb?: string;
+    config?: any;
+    widgetConfig?: any;
 }
-
 const UserSchema: Schema = new Schema(
     {
         email: { type: String, required: true, unique: true },
         password: { type: String },
         agentId: { type: String },
-        kb: {
-            type: String,
-            required: false,
-        },
+        googleId: { type: String },
+        name: { type: String },
+        picture: { type: String },
+        kb: { type: String },
         config: {
-            slackBotToken: { type: String },
-            slackBotId: { type: String },
-            slackChannel: { type: String },
+            type: Schema.Types.Mixed,
+            default: {},
+        },
+        widgetConfig: {
+            type: Schema.Types.Mixed,
+            default: {},
         },
     },
     { timestamps: true }

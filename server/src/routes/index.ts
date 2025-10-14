@@ -3,6 +3,7 @@ import { createChatRoutes } from "./chat.routes";
 import { createAuthRoutes } from "./auth.routes";
 import { createUserRoutes } from "./user.routes";
 import { createWebhookRoutes } from "./webhook.routes";
+import { createWidgetRoutes } from "./widget.routes";
 
 export function createAllRoutes(): Router {
     const router = Router();
@@ -12,6 +13,7 @@ export function createAllRoutes(): Router {
     router.use("/auth", createAuthRoutes());        // Authentication endpoints
     router.use("/user", createUserRoutes());        // User settings and configuration
     router.use("/webhook", createWebhookRoutes());  // Webhook endpoints
+    router.use("/widget", createWidgetRoutes());    // Widget configuration endpoints
 
     // Root health check
     router.get("/health", (req, res) => {

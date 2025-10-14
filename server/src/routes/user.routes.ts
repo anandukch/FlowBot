@@ -1,14 +1,29 @@
 import { Router } from "express";
 import User from "../models/user.modesl";
-import { authMiddleware, AuthRequest } from "../middlewares/authMiddleware";
+import authMiddleware, { AuthRequest } from "../middlewares/authMiddleware";
+import { RequestWithInfo } from "../interfaces/auth.interface";
 
 export function createUserRoutes(): Router {
     const router = Router();
 
     // Get Slack configuration
-    router.get("/slack-config", authMiddleware, async (req, res) => {
+    router.get("/slack-config", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+
+            const user = await User.findById(tokenData.userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
             
             return res.json({ 
                 success: true, 
@@ -29,7 +44,7 @@ export function createUserRoutes(): Router {
     });
 
     // Update Slack configuration
-    router.post("/slack-config", authMiddleware, async (req, res) => {
+    router.post("/slack-config", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
             const { slackBotToken, slackBotId, slackChannel } = req.body;
@@ -64,7 +79,7 @@ export function createUserRoutes(): Router {
     });
 
     // Get knowledge base
-    router.get("/kb", authMiddleware, async (req, res) => {
+    router.get("/kb", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
             
@@ -87,7 +102,7 @@ export function createUserRoutes(): Router {
     });
 
     // Add/Update knowledge base
-    router.post("/kb", authMiddleware, async (req, res) => {
+    router.post("/kb", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
             const { kb } = req.body;
@@ -122,7 +137,7 @@ export function createUserRoutes(): Router {
     });
 
     // Delete knowledge base
-    router.delete("/kb", authMiddleware, async (req, res) => {
+    router.delete("/kb", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
             
@@ -143,7 +158,7 @@ export function createUserRoutes(): Router {
     });
 
     // Get user profile and settings
-    router.get("/profile", authMiddleware, async (req, res) => {
+    router.get("/profile", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
             
@@ -176,7 +191,7 @@ export function createUserRoutes(): Router {
     });
 
     // Update user settings
-    router.post("/settings", authMiddleware, async (req, res) => {
+    router.post("/settings", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
             const { settings } = req.body;
@@ -187,11 +202,92 @@ export function createUserRoutes(): Router {
             
             return res.json({
                 success: true,
-                message: "Settings updated successfully",
-                settings: settings
+                message: "Settings updated successfully"
             });
         } catch (error) {
             console.error("Update settings error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal server error",
+            });
+        }
+    });
+
+    // Get widget customization
+    router.get("/widget-config", authMiddleware(), async (req, res) => {
+        try {
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+
+            const user = await User.findById(tokenData.userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+            
+            return res.json({ 
+                success: true, 
+                config: user.widgetConfig || {},
+                user: {
+                    id: user._id,
+                    email: user.email,
+                    agentId: user.agentId,
+                }
+            });
+        } catch (error) {
+            console.error("Get widget config error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal server error",
+            });
+        }
+    });
+
+    // Update widget customization
+    router.post("/widget-config", authMiddleware(), async (req, res) => {
+        try {
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+
+            const user = await User.findById(tokenData.userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            const { config } = req.body;
+            
+            if (!config) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Widget configuration is required",
+                });
+            }
+
+            user.widgetConfig = config;
+            await user.save();
+            
+            return res.json({
+                success: true,
+                message: "Widget configuration updated successfully",
+                config: user.widgetConfig
+            });
+        } catch (error) {
+            console.error("Update widget config error:", error);
             return res.status(500).json({
                 success: false,
                 message: "Internal server error",

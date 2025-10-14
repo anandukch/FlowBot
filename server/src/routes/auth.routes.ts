@@ -1,114 +1,26 @@
 import { Router } from "express";
 import User from "../models/user.modesl";
-import { v4 as uuidv4 } from "uuid";
+import AuthService from "../services/auth.service";
+import { CookieOptions } from "express";
+import jwt from "jsonwebtoken";
 
 export function createAuthRoutes(): Router {
     const router = Router();
+    const authService = new AuthService();
 
-    // User sign in
-    router.post("/signin", async (req, res) => {
-        try {
-            const { email, password } = req.body;
-            console.log("Sign in request:", req.body);
-            if (!email || !password) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Email and password are required",
-                });
-            }
+    // Cookie options for secure authentication
+    const cookieOptions: CookieOptions = {
+        httpOnly: process.env.NODE_ENV === "production",
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+    };
 
-            const user = await User.findOne({ email }).exec();
-            if (!user) {
-                return res.status(401).json({
-                    success: false,
-                    message: "User not found",
-                });
-            }
-            
-            if (user.password !== password) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Invalid password",
-                });
-            }
-            
-            res.cookie("agentId", user.agentId, {
-                httpOnly: false,
-                sameSite: "lax",
-                maxAge: 24 * 60 * 60 * 1000, // 24 hours
-            });
-            
-            return res.json({
-                success: true,
-                message: "User signed in successfully",
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    agentId: user.agentId,
-                },
-            });
-        } catch (error) {
-            console.error("Sign in error:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Internal server error",
-            });
-        }
-    });
-
-    // User sign up
-    router.post("/signup", async (req, res) => {
-        try {
-            const { email, password } = req.body;
-            console.log("Sign up request:", req.body);
-            if (!email || !password) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Email and password are required",
-                });
-            }
-
-            const existingUser = await User.findOne({ email }).exec();
-            if (existingUser) {
-                return res.status(409).json({
-                    success: false,
-                    message: "User already exists",
-                });
-            }
-
-            const agentId = uuidv4();
-            const user = new User({ email, password, agentId });
-            await user.save();
-            
-            res.cookie("agentId", agentId, {
-                httpOnly: true,
-                sameSite: "strict",
-                maxAge: 24 * 60 * 60 * 1000, // 24 hours
-            });
-            
-            return res.json({
-                success: true,
-                message: "User signed up successfully",
-                user: {
-                    id: user._id,
-                    email: user.email,
-                    agentId: user.agentId,
-                },
-            });
-        } catch (error) {
-            console.error("Sign up error:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Internal server error",
-            });
-        }
-    });
 
     // Sign out
     router.post("/signout", (req, res) => {
-        res.clearCookie("agentId");
+        res.clearCookie("accessToken", { expires: new Date(0) });
         return res.json({
-            success: true,
             message: "User signed out successfully",
         });
     });
@@ -116,16 +28,19 @@ export function createAuthRoutes(): Router {
     // Check authentication status
     router.get("/me", async (req, res) => {
         try {
-            const agentId = req.cookies.agentId;
+            const accessToken = req.cookies.accessToken;
             
-            if (!agentId) {
+            if (!accessToken) {
                 return res.status(401).json({
                     success: false,
                     message: "Not authenticated",
                 });
             }
 
-            const user = await User.findOne({ agentId }).exec();
+            // Verify JWT token
+            const decoded = jwt.verify(accessToken, process.env.JWT_SECRET || 'your-secret-key') as any;
+            
+            const user = await User.findById(decoded.userId).exec();
             if (!user) {
                 return res.status(401).json({
                     success: false,
@@ -139,13 +54,118 @@ export function createAuthRoutes(): Router {
                     id: user._id,
                     email: user.email,
                     agentId: user.agentId,
+                    name: user.name,
+                    picture: user.picture,
                 },
             });
         } catch (error) {
             console.error("Auth check error:", error);
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token",
+            });
+        }
+    });
+
+    // Google OAuth - Redirect to Google
+    router.get("/google", async (req, res) => {
+        try {
+            const url = authService.getUrl();
+            res.redirect(url);
+        } catch (error) {
+            console.error("Google OAuth redirect error:", error);
             return res.status(500).json({
                 success: false,
-                message: "Internal server error",
+                message: "Failed to redirect to Google OAuth",
+            });
+        }
+    });
+
+    // Google OAuth - Callback handler
+    router.get("/google/callback", async (req, res) => {
+        try {
+            const { code } = req.query;
+            
+            if (!code) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Authorization code not provided",
+                });
+            }
+
+            // Get Google user data from code
+            const googleUser = await authService.getGoogleAccountFromCode(code as string);
+            
+            if (!googleUser) {
+                throw new Error("Failed to get user data from Google");
+            }
+
+            // Create or update user
+            const user = await authService.createGoogleUser(googleUser);
+            
+            if (!user) {
+                throw new Error("Failed to create or update user");
+            }
+
+            // Generate JWT access token
+            const accessToken = await authService.generateAccessToken(user.email);
+
+            // Set authentication cookie with JWT token
+            res.cookie("accessToken", accessToken, cookieOptions);
+            
+            // Redirect to client dashboard
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+            res.redirect(`${clientUrl}/knowledge`);
+            
+        } catch (error) {
+            console.error("Google OAuth callback error:", error);
+            const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+            res.redirect(`${clientUrl}/auth?error=oauth_failed`);
+        }
+    });
+
+    // Get access token for authenticated users
+    router.get("/tokens", async (req, res) => {
+        try {
+            const accessToken = req.cookies.accessToken;
+            
+            if (!accessToken) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+
+            // Verify JWT token
+            const decoded = jwt.verify(accessToken, process.env.JWT_SECRET || 'your-secret-key') as any;
+            
+            const user = await User.findById(decoded.userId).exec();
+            if (!user) {
+                return res.status(401).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            return res.json({
+                success: true,
+                data: {
+                    accessToken,
+                    user: {
+                        id: user._id,
+                        email: user.email,
+                        agentId: user.agentId,
+                        name: user.name,
+                        picture: user.picture,
+                    },
+                },
+                message: "Access token retrieved",
+            });
+        } catch (error) {
+            console.error("Token retrieval error:", error);
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token",
             });
         }
     });
