@@ -30,9 +30,9 @@ export function createChatRoutes(): Router {
             }
 
             let userChat: any = {};
-            if (memoryService.hasUserData(conversationId)) {
-                userChat = memoryService.getUserData(conversationId);
-            }
+            // if (memoryService.hasUserData(conversationId)) {
+            //     userChat = memoryService.getUserData(conversationId);
+            // }
 
             const emailRegex = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
             if (emailRegex.test(message)) {
@@ -41,12 +41,10 @@ export function createChatRoutes(): Router {
                     userChat.email = match[0];
                     userChat.awaitingEmail = false;
                     const ack = `Thanks! We'll send updates to ${userChat.email}.`;
-                    memoryService.setUserData(conversationId, {
+                    await memoryService.addMessage(conversationId, "assistant", ack, agentId, {
                         email: match[0],
-                        awaitingEmail: false,
-                        ...userChat,
+                        awaitingEmail: false
                     });
-                    memoryService.addMessage(conversationId, "assistant", ack);
                     return res.json({
                         success: true,
                         response: ack,
@@ -55,7 +53,7 @@ export function createChatRoutes(): Router {
                     });
                 } else {
                     const prompt = "Please share a valid email address (for example: name@example.com) so our support team can follow up.";
-                    memoryService.addMessage(conversationId, "assistant", prompt);
+                    await memoryService.addMessage(conversationId, "assistant", prompt);
                     return res.json({
                         success: false,
                         message: prompt,
@@ -67,7 +65,6 @@ export function createChatRoutes(): Router {
             }
             await initializeAgent(agentId);
             const result = await agentService.invoke(message, conversationId, agentId);
-
             res.json({
                 response: result.output,
                 conversationId,
@@ -124,10 +121,15 @@ export function createChatRoutes(): Router {
     // Listen for workflow events and automatically send via SSE
     workflowEvents.on('workflow:escalated', (data: any) => {
         console.log('📤 Workflow escalated:', data);
+        const escalationMessage = data.hasEmail 
+            ? 'Your request has been escalated to our customer support team. We\'ll send you updates via email soon!'
+            : 'Your request has been escalated to our customer support team. Please provide your email to receive updates.';
+            
         sendToUser(data.conversationId, {
             type: 'workflow_escalated',
-            message: 'Your request has been escalated to our team',
-            conversationId: data.conversationId
+            message: escalationMessage,
+            conversationId: data.conversationId,
+            hasEmail: data.hasEmail
         });
     });
 

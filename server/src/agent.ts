@@ -15,7 +15,7 @@ export interface AgentResult {
 
 // Groq configuration
 const GROQ_CONFIG = {
-    MODEL: "llama-3.1-70b-versatile",
+    MODEL: "meta-llama/llama-4-scout-17b-16e-instruct",
     MAX_TOKENS: 1000,
     TEMPERATURE: 0.3,
     TIMEOUT: 30000,
@@ -45,14 +45,22 @@ RESPONSE GUIDELINES:
 4. Always be polite, professional, and helpful
 5. Keep responses concise but informative
 
-ESCALATION CRITERIA:
-- Question not covered in KB
-- User requests human support
-- Complex technical issues
-- Billing/payment issues
-- Complaints or frustrated customers
-- Refund requests
-- Account-specific issues
+ESCALATION CRITERIA & RESPONSES:
+When escalating, provide a user-friendly message explaining what happens next:
+
+- Question not covered in KB → "I don't have specific information about that in my knowledge base. I've forwarded your question to our customer support team who will get back to you with detailed information soon."
+
+- User requests human support → "I've connected you with our customer support team. They'll reach out to you shortly to provide personalized assistance."
+
+- Complex technical issues → "This seems like a technical matter that requires specialized attention. I've escalated your case to our technical support team who will contact you with a solution."
+
+- Billing/payment issues → "For billing and payment matters, I've transferred your request to our billing department. They'll review your account and get back to you with assistance."
+
+- Complaints or frustrated customers → "I understand your concern and want to ensure you get the best possible help. I've escalated your case to our customer support manager who will personally address your issue."
+
+- Refund requests → "I've forwarded your refund request to our customer service team. They'll review your case and contact you with the next steps."
+
+- Account-specific issues → "For account-related matters, I've directed your request to our account specialists who will assist you with secure access to your information."
 
 You must respond with a JSON object containing:
 - response: Your message to the user
@@ -95,13 +103,13 @@ export class AgentService {
         }
 
         try {
-            if (!this.memoryService.hasUserData(conversationId)) {
-                throw new Error("No user data found for conversationId: " + conversationId);
-            }
+            // if (!this.memoryService.hasUserData(conversationId)) {
+            //     throw new Error("No user data found for conversationId: " + conversationId);
+            // }
 
-            this.memoryService.addMessage(conversationId, "user", input);
+            await this.memoryService.addMessage(conversationId, "user", input, agentId);
 
-            const history = this.memoryService.getConversationHistory(conversationId);
+            const history = await this.memoryService.getConversationHistory(conversationId);
             
             const contextMessage = history
                 ? `Previous conversation:\n${history}\n\nCurrent message: ${input}`
@@ -138,7 +146,7 @@ export class AgentService {
             const parsedResponse = JSON.parse(responseContent);
             const validatedResponse = agentResponseSchema.parse(parsedResponse);
 
-            this.memoryService.addMessage(conversationId, "assistant", validatedResponse.response);
+            await this.memoryService.addMessage(conversationId, "assistant", validatedResponse.response);
             if (validatedResponse.needsEscalation) {
                 await this.handleEscalation(conversationId, input, validatedResponse.escalationReason || "User needs human support");
             }
@@ -168,20 +176,36 @@ export class AgentService {
             
             console.log(`🚨 Escalating conversation ${conversationId}: ${reason}`);
             
+            // Get conversation to check if user provided email
+            const conversation = await this.memoryService.getConversationById(conversationId);
+            const hasEmail = conversation?.config?.email;
+            
+            // Create user-friendly escalation message
+            let escalationMessage = "Your request has been successfully forwarded to our customer support team. ";
+            
+            if (hasEmail) {
+                escalationMessage += "We'll send you updates via email as soon as we have more information. ";
+            } else {
+                escalationMessage += "If you'd like to receive updates, please share your email address and we'll keep you informed. ";
+            }
+            
+            escalationMessage += "Thank you for your patience!";
+            
             // Emit escalation event
             workflowEvents.emit('workflow:escalated', {
                 workflowId,
                 conversationId,
                 originalMessage,
                 escalationReason: reason,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                hasEmail: !!hasEmail
             });
 
-            // Add escalation message to conversation
-            this.memoryService.addMessage(
+            // Add user-friendly escalation message to conversation
+            await this.memoryService.addMessage(
                 conversationId, 
                 "assistant", 
-                `Escalated to human support: ${reason}`
+                escalationMessage
             );
 
         } catch (error) {

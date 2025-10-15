@@ -479,7 +479,7 @@
   
       #message-input {
         flex: 1;
-        padding: 16px 60px 16px 20px;
+        padding: 12px 50px 12px 18px;
         border: 1px solid rgba(0, 0, 0, 0.08);
         border-radius: ${widgetConfig.borderRadius + 14}px;
         font-size: 14px;
@@ -495,33 +495,18 @@
       }
   
       #message-input:focus {
-        border-color: ${widgetConfig.primaryColor};
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 0 0 3px ${widgetConfig.primaryColor}20;
+        border-color: transparent;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06), 
+                    0 0 0 2px ${widgetConfig.primaryColor}15, 
+                    0 0 0 4px ${widgetConfig.primaryColor}08,
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
         background: rgba(255, 255, 255, 1);
+        transform: translateY(-1px);
+        outline: none;
       }
   
       #emoji-btn {
-        position: absolute;
-        right: 44px;
-        top: 50%;
-        transform: translateY(-50%);
-        border-radius: 50%;
-        border: 0;
-        background: transparent;
-        color: #666666;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s, color 0.2s;
-        font-size: 16px;
-        width: 30px;
-        height: 30px;
-      }
-  
-      #emoji-btn:hover {
-        background: rgba(0, 0, 0, 0.05);
-        color: #333333;
+        display: none !important;
       }
   
       #send-btn {
