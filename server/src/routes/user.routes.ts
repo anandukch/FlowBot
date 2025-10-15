@@ -61,9 +61,9 @@ export function createUserRoutes(): Router {
                     message: "User not found",
                 });
             }
-            const { slackBotToken, slackBotId, slackChannel } = req.body;
+            const { slackBotToken, slackBotId } = req.body;
 
-            if (!slackBotToken || !slackBotId || !slackChannel) {
+            if (!slackBotToken || !slackBotId) {
                 return res.status(400).json({
                     success: false,
                     message: "All Slack configuration fields are required",
@@ -74,7 +74,6 @@ export function createUserRoutes(): Router {
                 ...user.config,
                 slackBotToken,
                 slackBotId,
-                slackChannel,
             };
 
             await user.save();

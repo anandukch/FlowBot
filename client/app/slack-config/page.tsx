@@ -45,10 +45,7 @@ export default function SlackConfigPage() {
       alert("Please enter your Slack Bot ID");
       return;
     }
-    if (!slackChannel.trim()) {
-      alert("Please enter your Slack Channel ID");
-      return;
-    }
+  
 
     try {
       const response = await userAPI.saveSlackConfig(slackBotToken, slackBotId, slackChannel);
@@ -112,7 +109,7 @@ export default function SlackConfigPage() {
               />
             </div>
             
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <Label htmlFor="slack-channel">Slack Channel ID</Label>
               <Input 
                 id="slack-channel" 
@@ -120,7 +117,7 @@ export default function SlackConfigPage() {
                 value={slackChannel}
                 onChange={(e) => setSlackChannel(e.target.value)}
               />
-            </div>
+            </div> */}
           </CardContent>
           <CardFooter>
             <Button onClick={handleSave} className="cursor-pointer">
