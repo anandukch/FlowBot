@@ -4,11 +4,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { MemoryService } from "./services/memory";
 import userModel from "./models/user.modesl";
 import { workflowEvents } from "../index";
+import { WorkflowService } from './services/workflow.service';
+import { approvalFlowService } from './services/approval-flow.service';
 
 export interface AgentResult {
     output: string;
     needsEscalation: boolean;
     escalationReason?: string;
+    approvalFlowId?: string;
     success: boolean;
     error?: string;
 }
@@ -72,8 +75,11 @@ You must respond with a JSON object containing:
 export class AgentService {
     private client: Groq | null = null;
     private userKB: any = null;
+    private workflowService: WorkflowService;
 
-    constructor(private memoryService: MemoryService, private sseConnections: Map<string, any>) {}
+    constructor(private memoryService: MemoryService, private sseConnections: Map<string, any>) {
+        this.workflowService = new WorkflowService();
+    }
 
     async initialize(agentId: string) {
         try {
@@ -171,14 +177,29 @@ export class AgentService {
 
     private async handleEscalation(conversationId: string, originalMessage: string, reason: string) {
         try {
-            // Generate unique workflow ID
-            const workflowId = `wf_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-            
             console.log(`🚨 Escalating conversation ${conversationId}: ${reason}`);
             
-            // Get conversation to check if user provided email
+            // Get conversation to check if user provided email and agentId
             const conversation = await this.memoryService.getConversationById(conversationId);
             const hasEmail = conversation?.config?.email;
+            const agentId = conversation?.agentId || 'default';
+            
+            // Create workflow using the approval flow service
+            // This will automatically send Slack notifications if the first step has a Slack channel
+            const workflow = await approvalFlowService.createAndNotify({
+                conversationId,
+                agentId,
+                originalMessage,
+                escalationReason: reason,
+                // Use default template - will be determined by WorkflowService
+                useDefaultTemplate: true,
+                metadata: {
+                    hasEmail: !!hasEmail,
+                    userEmail: conversation?.config?.email
+                }
+            });
+            
+            console.log(`✅ Created workflow ${workflow.workflowId} for escalation`);
             
             // Create user-friendly escalation message
             let escalationMessage = "Your request has been successfully forwarded to our customer support team. ";
@@ -191,9 +212,9 @@ export class AgentService {
             
             escalationMessage += "Thank you for your patience!";
             
-            // Emit escalation event
+            // Emit legacy escalation event for backward compatibility
             workflowEvents.emit('workflow:escalated', {
-                workflowId,
+                workflowId: workflow.workflowId,
                 conversationId,
                 originalMessage,
                 escalationReason: reason,
@@ -210,6 +231,17 @@ export class AgentService {
 
         } catch (error) {
             console.error("Error handling escalation:", error);
+            
+            // Fallback to legacy event emission if workflow creation fails
+            const workflowId = `wf_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            workflowEvents.emit('workflow:escalated', {
+                workflowId,
+                conversationId,
+                originalMessage,
+                escalationReason: reason,
+                timestamp: new Date().toISOString(),
+                hasEmail: false
+            });
         }
     }
 }
