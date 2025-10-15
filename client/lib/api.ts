@@ -85,8 +85,93 @@ export const webhookAPI = {
   email: (data: any) => api.post('/api/webhook/email', data),
   
   external: (data: any) => api.post('/api/webhook/external', data),
-  
   getHealth: () => api.get('/api/webhook/health'),
+};
+
+// Approval API endpoints - /api/approvals/*
+export const approvalAPI = {
+  // Get pending approvals for user
+  getPendingApprovals: (approverEmail: string) =>
+    api.get(`/api/approvals/pending/${approverEmail}`),
+  
+  // Get completed approvals for user
+  getCompletedApprovals: (approverEmail: string) =>
+    api.get(`/api/approvals/completed/${approverEmail}`),
+  
+  // Get workflow details
+  getWorkflow: (workflowId: string) => 
+    api.get(`/api/approvals/workflows/${workflowId}`),
+  
+  // Get workflows by conversation
+  getWorkflowsByConversation: (conversationId: string) =>
+    api.get(`/api/approvals/workflows/conversation/${conversationId}`),
+  
+  // Approve step
+  approveStep: (workflowId: string, approver: string, response?: string, formResponse?: any) =>
+    api.post(`/api/approvals/workflows/${workflowId}/approve`, { 
+      approver, 
+      response, 
+      formResponse 
+    }),
+  
+  // Reject step
+  rejectStep: (workflowId: string, approver: string, response?: string, formResponse?: any) =>
+    api.post(`/api/approvals/workflows/${workflowId}/reject`, { 
+      approver, 
+      response, 
+      formResponse 
+    }),
+  
+  // Delegate approval
+  delegateApproval: (workflowId: string, currentApprover: string, delegateTo: string, reason?: string) =>
+    api.post(`/api/approvals/workflows/${workflowId}/delegate`, {
+      currentApprover,
+      delegateTo,
+      reason
+    }),
+  
+  // Cancel workflow
+  cancelWorkflow: (workflowId: string, cancelledBy: string, reason?: string) =>
+    api.post(`/api/approvals/workflows/${workflowId}/cancel`, {
+      cancelledBy,
+      reason
+    }),
+  
+  // Rollback workflow
+  rollbackWorkflow: (workflowId: string, triggeredBy: string) =>
+    api.post(`/api/approvals/workflows/${workflowId}/rollback`, {
+      triggeredBy
+    }),
+  
+  // Get templates
+  getTemplates: (agentId: string) =>
+    api.get(`/api/approvals/templates/${agentId}`),
+  
+  // Get template details
+  getTemplate: (templateId: string) =>
+    api.get(`/api/approvals/templates/detail/${templateId}`),
+  
+  // Create custom template
+  createTemplate: (template: any) =>
+    api.post('/api/approvals/templates', template),
+  
+  // Create default templates
+  createDefaultTemplates: (agentId: string) =>
+    api.post(`/api/approvals/templates/defaults/${agentId}`),
+  
+  // Delete template
+  deleteTemplate: (templateId: string) =>
+    api.delete(`/api/approvals/templates/${templateId}`),
+  
+  // Set template as default
+  setDefaultTemplate: (templateId: string) =>
+    api.put(`/api/approvals/templates/${templateId}/default`),
+  
+  // Get statistics
+  getStats: (agentId?: string) =>
+    agentId 
+      ? api.get(`/api/approvals/stats/${agentId}`)
+      : api.get('/api/approvals/stats'),
 };
 
 // General API health check

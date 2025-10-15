@@ -5,6 +5,7 @@ import { createUserRoutes } from "./user.routes";
 import { createWebhookRoutes } from "./webhook.routes";
 import { createWidgetRoutes } from "./widget.routes";
 import { createConversationRoutes } from "./conversation.routes";
+import { createApprovalRoutes } from "./approval.routes";
 
 export function createAllRoutes(): Router {
     const router = Router();
@@ -16,6 +17,7 @@ export function createAllRoutes(): Router {
     router.use("/webhook", createWebhookRoutes());  // Webhook endpoints
     router.use("/widget", createWidgetRoutes());    // Widget configuration endpoints
     router.use("/conversations", createConversationRoutes()); // Conversation management endpoints
+    router.use("/approvals", createApprovalRoutes()); // Approval workflow management endpoints
 
     // Root health check
     router.get("/health", (req, res) => {
@@ -27,7 +29,8 @@ export function createAllRoutes(): Router {
                 chat: "✅ Active",
                 auth: "✅ Active", 
                 user: "✅ Active",
-                webhooks: "✅ Active"
+                webhooks: "✅ Active",
+                approvals: "✅ Active"
             }
         });
     });
@@ -64,6 +67,17 @@ export function createAllRoutes(): Router {
                     "POST /api/webhook/email": "Email approval webhook",
                     "POST /api/webhook/external": "External system webhook",
                     "GET /api/webhook/health": "Webhook service health"
+                },
+                approvals: {
+                    "POST /api/approvals/workflows": "Create new workflow",
+                    "GET /api/approvals/workflows/:workflowId": "Get workflow details",
+                    "GET /api/approvals/pending/:approverEmail": "Get pending approvals",
+                    "POST /api/approvals/workflows/:workflowId/approve": "Approve step",
+                    "POST /api/approvals/workflows/:workflowId/reject": "Reject step",
+                    "POST /api/approvals/workflows/:workflowId/delegate": "Delegate approval",
+                    "POST /api/approvals/workflows/:workflowId/rollback": "Rollback workflow",
+                    "GET /api/approvals/templates/:agentId": "Get approval templates",
+                    "POST /api/approvals/templates": "Create custom template"
                 }
             }
         });

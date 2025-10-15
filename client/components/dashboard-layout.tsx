@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Bot, Brain, Settings, Users, FileText, X, Zap, Database, Target, Code, LogOut, User, Palette } from "lucide-react"
+import { Bot, Brain, Settings, Users, FileText, X, Zap, Database, Target, Code, LogOut, User, Palette, CheckSquare, FileStack } from "lucide-react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
@@ -14,6 +14,8 @@ const sidebarItems = [
   // { icon: Zap, label: "Tools", href: "/tools", active: false },
   { icon: Brain, label: "Knowledge", href: "/knowledge", active: false },
   { icon: Palette, label: "Widget Design", href: "/widget-customization", active: false },
+  { icon: CheckSquare, label: "Approvals", href: "/approvals", active: false },
+  { icon: FileStack, label: "Templates", href: "/templates", active: false },
   // { icon: Target, label: "Triggers", href: "/triggers", active: false },
   // { icon: Users, label: "Escalations", href: "/escalations", active: false },
   // { icon: Database, label: "Metadata", href: "/metadata", active: false },
