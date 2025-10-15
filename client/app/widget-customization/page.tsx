@@ -685,7 +685,7 @@ ${!config.showTypingIndicator ? '.typing-indicator { display: none !important; }
                       </p>
                     </div>
                     <div className="grid grid-cols-1 gap-2">
-                      <p><strong>Test URL:</strong> <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">http://localhost:3001/mock-ui/</code></p>
+                      {/* <p><strong>Test URL:</strong> <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">http://localhost:3001/mock-ui/</code></p> */}
                       <p><strong>Your Agent ID:</strong> <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">{user?.agentId || 'Loading...'}</code></p>
                     </div>
                   </div>

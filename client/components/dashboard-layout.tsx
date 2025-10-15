@@ -60,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
                 <Bot className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-medium text-sm text-sidebar-foreground">Untitled agent</span>
+              <span className="font-medium text-sm text-sidebar-foreground">Flow Bot</span>
             </div>
             <Button variant="ghost" size="sm" className="lg:hidden" onClick={() => setSidebarOpen(false)}>
               <X className="w-4 h-4" />
