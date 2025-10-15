@@ -224,11 +224,11 @@
         box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
       }
   
-      /* Modern Close Button */
-      .close-chat {
+      /* Modern Header Buttons */
+      .close-chat, .retry-btn {
         background: rgba(0, 0, 0, 0.05);
         border: none;
-        font-size: 16px;
+        font-size: 14px;
         color: rgba(${widgetConfig.textColor === '#ffffff' ? '255, 255, 255' : '0, 0, 0'}, 0.6);
         cursor: pointer;
         padding: 8px;
@@ -237,15 +237,24 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         backdrop-filter: blur(10px);
       }
-  
-      .close-chat:hover {
+
+      .close-chat:hover, .retry-btn:hover {
         background: rgba(0, 0, 0, 0.1);
         color: rgba(${widgetConfig.textColor === '#ffffff' ? '255, 255, 255' : '0, 0, 0'}, 0.8);
         transform: scale(1.05);
+      }
+
+      .retry-btn.loading {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
   
       /* Modern Messages Area */
@@ -618,6 +627,9 @@
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span id="status" class="status">Online</span>
+          <button class="retry-btn" id="retry-btn" title="Check for updates">
+            <i class="fas fa-sync-alt"></i>
+          </button>
           <button class="close-chat" id="close-chat">
             <i class="fas fa-times"></i>
           </button>
@@ -644,6 +656,7 @@
     const form = shadowRoot.getElementById('chat-form');
     const input = shadowRoot.getElementById('message-input');
     const closeBtn = shadowRoot.getElementById('close-chat');
+    const retryBtn = shadowRoot.getElementById('retry-btn');
   
     let isChatOpen = false;
   
@@ -667,6 +680,74 @@
   
     if (chatIcon) {
       chatIcon.addEventListener('click', openChat);
+    }
+
+    if (retryBtn) {
+      retryBtn.addEventListener('click', fetchWorkflowUpdates);
+    }
+
+    async function fetchWorkflowUpdates() {
+      if (retryBtn.classList.contains('loading')) return;
+      
+      retryBtn.classList.add('loading');
+      
+      try {
+        const response = await fetch(`http://localhost:3001/api/chat/workflows/${userId}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+          console.error('Failed to fetch workflows');
+          appendMessage('assistant', 'Failed to check for updates. Please try again.', true);
+          return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          displayWorkflowResponses(data.workflows);
+        }
+      } catch (error) {
+        console.error('Error fetching workflow updates:', error);
+        appendMessage('assistant', 'Error checking for updates. Please try again.', true);
+      } finally {
+        retryBtn.classList.remove('loading');
+      }
+    }
+
+    function displayWorkflowResponses(workflows) {
+      if (!workflows || workflows.length === 0) {
+        appendMessage('assistant', 'No new updates found.', true);
+        return;
+      }
+
+      // Group workflows by status for cleaner display
+      const approved = workflows.filter(w => w.status === 'approved');
+      const rejected = workflows.filter(w => w.status === 'rejected');
+      const completed = workflows.filter(w => w.status === 'completed');
+
+      // Display approved workflows
+      approved.forEach(workflow => {
+        const message = `✅ **Request Approved**\n"${workflow.originalMessage}"\n\n💬 ${workflow.finalResponse}`;
+        appendMessage('assistant', message, true);
+      });
+
+      // Display rejected workflows
+      rejected.forEach(workflow => {
+        const message = `❌ **Request Declined**\n"${workflow.originalMessage}"\n\n💬 ${workflow.finalResponse}`;
+        appendMessage('assistant', message, true);
+      });
+
+      // Display completed workflows
+      completed.forEach(workflow => {
+        const message = `✅ **Request Completed**\n"${workflow.originalMessage}"\n\n💬 ${workflow.finalResponse}`;
+        appendMessage('assistant', message, true);
+      });
+
+      // Summary message
+      if (workflows.length > 1) {
+        appendMessage('assistant', `📋 ${workflows.length} updates shown above.`, true);
+      }
     }
   
     const userIdKey = 'cs_user_id';
@@ -834,6 +915,12 @@
           const data = JSON.parse(event.data);
           if (data.type === 'new_message') {
             appendMessage(data.role, data.content, data.isSupport);
+          } else if (data.type === 'workflow_approved') {
+            appendMessage('assistant', `✅ ${data.message}\n\nResponse: ${data.response || 'No additional comments'}`, true);
+          } else if (data.type === 'workflow_rejected') {
+            appendMessage('assistant', `❌ ${data.message}\n\nReason: ${data.reason || 'No reason provided'}`, true);
+          } else if (data.type === 'workflow_escalated') {
+            appendMessage('assistant', data.message, true);
           }
         } catch (e) {
           console.error('Error parsing SSE data:', e);

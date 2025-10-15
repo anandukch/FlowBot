@@ -420,6 +420,30 @@ export class WorkflowService {
     }
 
     /**
+     * Get undisplayed completed workflows for a user
+     */
+    async getUndisplayedCompletedWorkflows(conversationId: string): Promise<IWorkflow[]> {
+        return await Workflow.find({ 
+            conversationId,
+            status: { $in: ['approved', 'rejected', 'completed'] },
+            responseDisplayed: { $ne: true }
+        })
+        .sort({ completedAt: -1 })
+        .exec();
+    }
+
+    /**
+     * Mark workflows as displayed to user
+     */
+    async markWorkflowsAsDisplayed(workflowIds: string[]): Promise<void> {
+        await Workflow.updateMany(
+            { workflowId: { $in: workflowIds } },
+            { $set: { responseDisplayed: true } }
+        );
+        console.log(`📋 Marked ${workflowIds.length} workflows as displayed`);
+    }
+
+    /**
      * Get pending workflows for an approver
      * Also includes workflows with generic/default approver emails
      */

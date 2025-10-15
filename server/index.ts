@@ -42,6 +42,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // For Slack form-encoded payloads
 app.use(cookieParser());
 
 // Serve static files from the 'public' directory

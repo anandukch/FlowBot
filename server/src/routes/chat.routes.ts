@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { AgentService } from "../agent";
 import { MemoryService } from "../services/memory";
+import { WorkflowService } from "../services/workflow.service";
 import { workflowEvents } from "../../index";
 
 export function createChatRoutes(): Router {
@@ -149,6 +150,56 @@ export function createChatRoutes(): Router {
             message: 'Your request was not approved',
             reason: data.reason
         });
+    });
+
+    // Get user's completed workflows (only undisplayed ones)
+    router.get("/workflows/:userId", async (req, res) => {
+        try {
+            const { userId } = req.params;
+            console.log(`📋 Fetching undisplayed workflows for user: ${userId}`);
+            
+            const workflowService = new WorkflowService();
+            
+            // Get only undisplayed completed workflows
+            const workflows = await workflowService.getUndisplayedCompletedWorkflows(userId);
+            
+            // Deduplicate and format response - only keep the latest workflow per original message
+            const workflowMap = new Map();
+            workflows.forEach((workflow: any) => {
+                const key = workflow.originalMessage?.toLowerCase().trim();
+                if (!workflowMap.has(key) || workflow.completedAt > workflowMap.get(key).completedAt) {
+                    workflowMap.set(key, workflow);
+                }
+            });
+            
+            // Format response with only essential data
+            const completedWorkflows = Array.from(workflowMap.values()).map((workflow: any) => ({
+                workflowId: workflow.workflowId,
+                status: workflow.status,
+                originalMessage: workflow.originalMessage,
+                finalResponse: workflow.finalResponse || workflow.steps[workflow.steps.length - 1]?.response || 'No response provided',
+                completedAt: workflow.completedAt
+            }));
+            
+            console.log(`📋 Found ${completedWorkflows.length} undisplayed workflows for user ${userId}`);
+            
+            // Mark these workflows as displayed
+            if (completedWorkflows.length > 0) {
+                const workflowIds = completedWorkflows.map(w => w.workflowId);
+                await workflowService.markWorkflowsAsDisplayed(workflowIds);
+            }
+            
+            res.json({
+                success: true,
+                workflows: completedWorkflows
+            });
+        } catch (error) {
+            console.error('❌ Error fetching user workflows:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to fetch workflows'
+            });
+        }
     });
 
     // Health check

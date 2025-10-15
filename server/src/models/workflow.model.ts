@@ -116,6 +116,7 @@ export interface IWorkflow extends Document {
     cancelledAt?: Date;
     cancelledBy?: string;
     cancellationReason?: string;
+    responseDisplayed?: boolean; // Flag to track if response was shown to user
     
     // Instance methods
     addStateSnapshot(triggeredBy: string, action: string): void;
@@ -249,7 +250,11 @@ const WorkflowSchema = new Schema<IWorkflow>({
     completedAt: Date,
     cancelledAt: Date,
     cancelledBy: String,
-    cancellationReason: String
+    cancellationReason: String,
+    responseDisplayed: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true,
     collection: 'workflows'
