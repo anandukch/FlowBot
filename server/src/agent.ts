@@ -4,12 +4,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { MemoryService } from "./services/memory";
 import userModel from "./models/user.modesl";
 import { workflowEvents } from "../index";
-import { WorkflowService } from "./services/workflow.service";
+import { WorkflowService } from './services/workflow.service';
+import { approvalFlowService } from './services/approval-flow.service';
 
 export interface AgentResult {
     output: string;
     needsEscalation: boolean;
     escalationReason?: string;
+    approvalFlowId?: string;
     success: boolean;
     error?: string;
 }
@@ -182,9 +184,9 @@ export class AgentService {
             const hasEmail = conversation?.config?.email;
             const agentId = conversation?.agentId || 'default';
             
-            // Create workflow using the new system
-            // Use the default template for this agent
-            const workflow = await this.workflowService.createWorkflow({
+            // Create workflow using the approval flow service
+            // This will automatically send Slack notifications if the first step has a Slack channel
+            const workflow = await approvalFlowService.createAndNotify({
                 conversationId,
                 agentId,
                 originalMessage,

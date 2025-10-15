@@ -55,31 +55,36 @@ export interface IStateSnapshot {
     timestamp: Date;
     status: WorkflowStatus;
     currentStep: number;
-    data: any;
+    data?: any;
     triggeredBy: string;
     action: string;
 }
 
 // Approval step in multi-step chain
+export interface INotificationChannel {
+    type: 'email' | 'slack' | 'ui';
+    target: string; // Email address, Slack channel ID, or 'ui' for dashboard only
+    enabled: boolean;
+}
+
 export interface IApprovalStep {
     stepNumber: number;
     stepName: string;
-    approverRole: string; // e.g., "manager", "director", "cfo"
+    approverRole: string;
     approverEmail?: string;
+    notificationChannels?: INotificationChannel[];
     status: StepStatus;
+    deadline?: Date;
     approvedBy?: string;
     approvedAt?: Date;
     rejectedBy?: string;
     rejectedAt?: Date;
-    response?: string;
     delegatedTo?: string;
     delegatedAt?: Date;
-    deadline?: Date;
-    formFields?: IFormField[]; // Custom fields for this step
-    formResponse?: Record<string, any>; // User's form responses
+    response?: string;
+    formResponse?: any;
+    formFields?: IFormField[];
 }
-
-// Approval template definition
 export interface IApprovalTemplate {
     templateId: string;
     templateName: string;
@@ -139,6 +144,23 @@ const FormFieldSchema = new Schema<IFormField>({
     defaultValue: Schema.Types.Mixed
 }, { _id: false });
 
+// Notification channel schema
+const NotificationChannelSchema = new Schema<INotificationChannel>({
+    type: {
+        type: String,
+        enum: ['email', 'slack', 'ui'],
+        required: true
+    },
+    target: {
+        type: String,
+        required: true
+    },
+    enabled: {
+        type: Boolean,
+        default: true
+    }
+}, { _id: false });
+
 // State snapshot schema
 const StateSnapshotSchema = new Schema<IStateSnapshot>({
     timestamp: { type: Date, default: Date.now },
@@ -159,6 +181,7 @@ const ApprovalStepSchema = new Schema<IApprovalStep>({
     stepName: { type: String, required: true },
     approverRole: { type: String, required: true },
     approverEmail: String,
+    notificationChannels: [NotificationChannelSchema],
     status: { 
         type: String, 
         enum: Object.values(StepStatus),

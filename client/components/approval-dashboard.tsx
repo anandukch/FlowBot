@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, AlertCircle, User, ArrowRight, Loader2 } from "lucide-react"
+import { CheckCircle, XCircle, Clock, AlertCircle, User, ArrowRight, Loader2, UserPlus } from "lucide-react"
 
 interface ApprovalStep {
   stepNumber: number
@@ -78,16 +78,10 @@ export function ApprovalDashboard({ approverEmail }: { approverEmail: string }) 
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved':
-        return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'rejected':
-        return <XCircle className="w-4 h-4 text-red-500" />
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-500" />
       case 'in_progress':
         return <AlertCircle className="w-4 h-4 text-blue-500" />
       default:
-        return <Clock className="w-4 h-4 text-gray-500" />
+        return <Clock className="w-4 h-4 text-gray-400" />
     }
   }
 
@@ -192,6 +186,7 @@ export function ApprovalDashboard({ approverEmail }: { approverEmail: string }) 
                 key={workflow.workflowId} 
                 workflow={workflow} 
                 onAction={fetchAllWorkflows}
+                approverEmail={approverEmail}
               />
             ))
           )}
@@ -211,6 +206,7 @@ export function ApprovalDashboard({ approverEmail }: { approverEmail: string }) 
                 key={workflow.workflowId} 
                 workflow={workflow} 
                 readonly 
+                approverEmail={approverEmail}
               />
             ))
           )}
@@ -223,17 +219,54 @@ export function ApprovalDashboard({ approverEmail }: { approverEmail: string }) 
 function WorkflowCard({ 
   workflow, 
   readonly = false,
-  onAction 
+  onAction,
+  approverEmail
 }: { 
   workflow: Workflow
   readonly?: boolean
   onAction?: () => void
+  approverEmail?: string
 }) {
   const currentStep = workflow.steps[workflow.currentStep]
   const [showDetails, setShowDetails] = useState(false)
   const [showApprovalForm, setShowApprovalForm] = useState(false)
+  const [showDelegationForm, setShowDelegationForm] = useState(false)
   const [response, setResponse] = useState("")
+  const [delegateTo, setDelegateTo] = useState("")
+  const [delegationReason, setDelegationReason] = useState("")
   const [processing, setProcessing] = useState(false)
+  
+  // Check if current user can take action on this workflow
+  const canTakeAction = () => {
+    if (readonly || !currentStep || !approverEmail) return false
+    
+    // User can only act if:
+    // 1. Current step is pending OR delegated to them
+    // 2. Current step is assigned to this user
+    // 3. Workflow is in pending/in_progress status
+    return (
+      (currentStep.status === 'pending' || currentStep.status === 'delegated') &&
+      currentStep.approverEmail === approverEmail &&
+      (workflow.status === 'pending' || workflow.status === 'in_progress')
+    )
+  }
+  
+  // Check if user has already acted on the CURRENT step
+  const getUserStepStatus = () => {
+    // Only check if the current step is already completed by this user
+    if (!currentStep || !approverEmail) return null
+    
+    // If current step is completed by this user, they can't act again
+    if (currentStep.approverEmail === approverEmail && 
+        (currentStep.status === 'approved' || currentStep.status === 'rejected')) {
+      return currentStep
+    }
+    
+    return null
+  }
+  
+  const userCompletedStep = getUserStepStatus()
+  const canAct = canTakeAction()
 
   const handleApprove = async () => {
     try {
@@ -281,6 +314,35 @@ function WorkflowCard({
     }
   }
 
+  const handleDelegate = async () => {
+    if (!delegateTo.trim()) {
+      alert("Please enter an email address to delegate to.")
+      return
+    }
+
+    try {
+      setProcessing(true)
+      const { approvalAPI } = await import('@/lib/api')
+      
+      await approvalAPI.delegateApproval(
+        workflow.workflowId,
+        currentStep?.approverEmail || approverEmail || "user@example.com",
+        delegateTo,
+        delegationReason || "Delegated approval"
+      )
+      
+      setDelegateTo("")
+      setDelegationReason("")
+      setShowDelegationForm(false)
+      onAction?.()
+    } catch (error) {
+      console.error("Error delegating:", error)
+      alert("Failed to delegate. Please try again.")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -312,15 +374,24 @@ function WorkflowCard({
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Progress</span>
             <span className="text-muted-foreground">
-              Step {workflow.currentStep + 1} of {workflow.steps.length}
+              {(() => {
+                const completedSteps = workflow.steps.filter(s => s.status === 'approved' || s.status === 'rejected').length;
+                if (completedSteps === workflow.steps.length) {
+                  return `Completed (${workflow.steps.length}/${workflow.steps.length})`;
+                } else {
+                  return `Step ${completedSteps + 1} of ${workflow.steps.length}`;
+                }
+              })()}
             </span>
           </div>
           <div className="flex items-center gap-2">
             {workflow.steps.map((step, index) => (
               <div key={index} className="flex items-center flex-1">
                 <div className={`flex-1 h-2 rounded-full ${
-                  index < workflow.currentStep ? 'bg-green-500' :
-                  index === workflow.currentStep ? 'bg-blue-500' :
+                  step.status === 'approved' ? 'bg-green-500' :
+                  step.status === 'rejected' ? 'bg-red-500' :
+                  step.status === 'delegated' ? 'bg-blue-400' :
+                  step.status === 'pending' && index === workflow.currentStep ? 'bg-blue-500' :
                   'bg-gray-200'
                 }`} />
                 {index < workflow.steps.length - 1 && (
@@ -354,29 +425,100 @@ function WorkflowCard({
             Deadline: {new Date(workflow.deadline).toLocaleString()}
           </div>
         )}
+          
 
         {/* Action Buttons */}
-        {!readonly && currentStep && (
-          <div className="space-y-3 pt-2">
-            {/* Primary Actions */}
-            <div className="flex gap-2">
-              <Button 
-                className="flex-1" 
-                onClick={() => setShowApprovalForm(!showApprovalForm)}
-                disabled={processing}
-              >
-                {showApprovalForm ? 'Cancel' : 'Take Action'}
-              </Button>
+        <div className="space-y-3 pt-2">
+          {!readonly ? (
+            <>
+              {/* Show different UI based on user permissions */}
+              {userCompletedStep ? (
+                // User has already completed their step
+                <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="font-medium">
+                      You have already {userCompletedStep.status} this workflow
+                    </span>
+                  </div>
+                  <div className="text-sm text-green-600 dark:text-green-400 mt-1">
+                    Step {userCompletedStep.stepNumber}: {userCompletedStep.stepName}
+                  </div>
+                </div>
+              ) : canAct ? (
+              // User can take action on current step
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1" 
+                    onClick={() => {
+                      setShowApprovalForm(!showApprovalForm)
+                      setShowDelegationForm(false)
+                    }}
+                    disabled={processing}
+                  >
+                    {showApprovalForm ? 'Cancel' : 'Take Action'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setShowDelegationForm(!showDelegationForm)
+                      setShowApprovalForm(false)
+                    }}
+                    disabled={processing}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Delegate
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowDetails(!showDetails)}
+                  >
+                    {showDetails ? 'Hide' : 'View'} Details
+                  </Button>
+                </div>
+              </div>
+              ) : (
+                // User cannot act (waiting for previous steps or not their turn)
+                <div className="p-3 bg-yellow-50 dark:bg-yellow-950 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                  <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-medium">
+                      {currentStep?.approverEmail === approverEmail 
+                        ? "Waiting for previous steps to complete"
+                        : "Not your turn yet"
+                      }
+                    </span>
+                  </div>
+                  <div className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
+                    Current step: {currentStep?.stepName} ({currentStep?.approverRole})
+                  </div>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowDetails(!showDetails)}
+                    className="mt-2"
+                    size="sm"
+                  >
+                    {showDetails ? 'Hide' : 'View'} Details
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            // Readonly mode (completed workflows) - still allow viewing details
+            <div className="flex justify-center">
               <Button 
                 variant="outline"
                 onClick={() => setShowDetails(!showDetails)}
+                size="sm"
               >
                 {showDetails ? 'Hide' : 'View'} Details
               </Button>
             </div>
+          )}
 
             {/* Approval Form */}
-            {showApprovalForm && (
+            {!readonly && showApprovalForm && (
               <div className="space-y-3 p-4 bg-muted rounded-lg">
                 <div>
                   <Label htmlFor="response">Comments (Optional)</Label>
@@ -386,6 +528,7 @@ function WorkflowCard({
                     value={response}
                     onChange={(e) => setResponse(e.target.value)}
                     className="mt-1"
+                    rows={2}
                   />
                 </div>
                 <div className="flex gap-2">
@@ -427,13 +570,69 @@ function WorkflowCard({
                 </div>
               </div>
             )}
-          </div>
-        )}
+
+            {/* Delegation Form */}
+            {!readonly && showDelegationForm && (
+              <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 mb-2">
+                  <UserPlus className="w-4 h-4" />
+                  <span className="font-medium">Delegate Approval</span>
+                </div>
+                <div>
+                  <Label htmlFor="delegateTo">Delegate to (Email)</Label>
+                  <input
+                    id="delegateTo"
+                    type="email"
+                    placeholder="colleague@company.com"
+                    value={delegateTo}
+                    onChange={(e) => setDelegateTo(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="delegationReason">Reason (Optional)</Label>
+                  <Textarea
+                    id="delegationReason"
+                    placeholder="Why are you delegating this approval?"
+                    value={delegationReason}
+                    onChange={(e) => setDelegationReason(e.target.value)}
+                    className="mt-1"
+                    rows={2}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleDelegate}
+                    disabled={processing || !delegateTo.trim()}
+                    className="flex-1"
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Delegating...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Delegate
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    onClick={() => setShowDelegationForm(false)}
+                    variant="outline"
+                    disabled={processing}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+        </div>
 
         {/* Detailed View */}
         {showDetails && (
           <div className="border-t pt-4 space-y-4">
-            <h4 className="font-medium">Approval Steps</h4>
             {workflow.steps.map((step, index) => (
               <div 
                 key={index}

@@ -6,13 +6,11 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { TemplateForm } from "@/components/template-form"
 import { useAuth } from "@/contexts/auth-context"
 import { approvalAPI } from "@/lib/api"
-import { CheckCircle, Clock, Users, Loader2, Plus, Trash2, Edit, MoreVertical, Star } from "lucide-react"
+import { CheckCircle, Clock, Users, Loader2, Plus, Trash2, Edit, Star, Mail, MessageSquare, Monitor } from "lucide-react"
 
 export default function TemplatesPage() {
   const { user } = useAuth()
@@ -24,13 +22,7 @@ export default function TemplatesPage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [settingDefault, setSettingDefault] = useState<string | null>(null)
   
-  // Form state
-  const [templateName, setTemplateName] = useState("")
-  const [description, setDescription] = useState("")
-  const [deadlineHours, setDeadlineHours] = useState("24")
-  const [steps, setSteps] = useState([
-    { stepName: "Approval Required", approverRole: "support_team", approverEmail: "" }
-  ])
+  // No longer need individual form state - handled by TemplateForm component
 
   useEffect(() => {
     if (user?.agentId) {
@@ -64,95 +56,43 @@ export default function TemplatesPage() {
     }
   }
 
-  const addStep = () => {
-    setSteps([...steps, { stepName: "", approverRole: "", approverEmail: "" }])
-  }
-
-  const removeStep = (index: number) => {
-    if (steps.length > 1) {
-      setSteps(steps.filter((_, i) => i !== index))
-    }
-  }
-
-  const updateStep = (index: number, field: string, value: string) => {
-    const newSteps = [...steps]
-    newSteps[index] = { ...newSteps[index], [field]: value }
-    setSteps(newSteps)
-  }
-
-  const handleCreateTemplate = async () => {
+  const handleSaveTemplate = async (templateData: any) => {
     try {
       setCreating(true)
       const templateId = editingTemplate ? 
         editingTemplate.templateId : 
-        `${user?.agentId}_${templateName.toLowerCase().replace(/\s+/g, '_')}`
+        `${user?.agentId}_${templateData.templateName.toLowerCase().replace(/\s+/g, '_')}`
       
-      if (editingTemplate) {
-        // Update existing template
-        await approvalAPI.createTemplate({
-          templateId,
-          templateName,
-          description,
-          agentId: user?.agentId,
-          steps: steps.map((step, index) => ({
-            stepNumber: index + 1,
-            stepName: step.stepName,
-            approverRole: step.approverRole,
-            approverEmail: step.approverEmail || undefined,
-            status: 'pending',
-            formFields: [
-              {
-                id: 'response',
-                type: 'textarea',
-                label: 'Response',
-                required: false
-              }
-            ]
-          })),
-          globalDeadlineHours: parseInt(deadlineHours),
-          allowDelegation: true,
-          allowSkip: false,
-          notifyOnEachStep: true,
-          isActive: true
-        })
-      } else {
-        // Create new template
-        await approvalAPI.createTemplate({
-          templateId,
-          templateName,
-          description,
-          agentId: user?.agentId,
-          steps: steps.map((step, index) => ({
-            stepNumber: index + 1,
-            stepName: step.stepName,
-            approverRole: step.approverRole,
-            approverEmail: step.approverEmail || undefined,
-            status: 'pending',
-            formFields: [
-              {
-                id: 'response',
-                type: 'textarea',
-                label: 'Response',
-                required: false
-              }
-            ]
-          })),
-          globalDeadlineHours: parseInt(deadlineHours),
-          allowDelegation: true,
-          allowSkip: false,
-          notifyOnEachStep: true,
-          isActive: true
-        })
-      }
+      await approvalAPI.createTemplate({
+        templateId,
+        templateName: templateData.templateName,
+        description: templateData.description,
+        agentId: user?.agentId,
+        steps: templateData.steps.map((step: any, index: number) => ({
+          stepNumber: index + 1,
+          stepName: step.stepName,
+          approverRole: step.approverRole,
+          approverEmail: step.approverEmail || undefined,
+          notificationChannels: step.notificationChannels || [],
+          status: 'pending',
+          formFields: [
+            {
+              id: 'response',
+              type: 'textarea',
+              label: 'Response',
+              required: false
+            }
+          ]
+        })),
+        globalDeadlineHours: templateData.globalDeadlineHours,
+        allowDelegation: templateData.allowDelegation,
+        allowSkip: templateData.allowSkip,
+        notifyOnEachStep: templateData.notifyOnEachStep,
+        isActive: true
+      })
       
-      // Reset form
-      setTemplateName("")
-      setDescription("")
-      setDeadlineHours("24")
-      setSteps([{ stepName: "Approval Required", approverRole: "support_team", approverEmail: "" }])
       setEditingTemplate(null)
       setShowDialog(false)
-      
       await fetchTemplates()
     } catch (error) {
       console.error("Error saving template:", error)
@@ -164,14 +104,6 @@ export default function TemplatesPage() {
 
   const handleEditTemplate = (template: any) => {
     setEditingTemplate(template)
-    setTemplateName(template.templateName)
-    setDescription(template.description)
-    setDeadlineHours(template.globalDeadlineHours?.toString() || "24")
-    setSteps(template.steps?.map((step: any) => ({
-      stepName: step.stepName,
-      approverRole: step.approverRole,
-      approverEmail: step.approverEmail || ""
-    })) || [{ stepName: "Approval Required", approverRole: "support_team", approverEmail: "" }])
     setShowDialog(true)
   }
 
@@ -219,12 +151,17 @@ export default function TemplatesPage() {
     }
   }
 
-  const resetForm = () => {
-    setTemplateName("")
-    setDescription("")
-    setDeadlineHours("24")
-    setSteps([{ stepName: "Approval Required", approverRole: "support_team", approverEmail: "" }])
-    setEditingTemplate(null)
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'email':
+        return <Mail className="w-3 h-3" />
+      case 'slack':
+        return <MessageSquare className="w-3 h-3" />
+      case 'ui':
+        return <Monitor className="w-3 h-3" />
+      default:
+        return <Monitor className="w-3 h-3" />
+    }
   }
 
   if (loading) {
@@ -374,12 +311,30 @@ export default function TemplatesPage() {
                       <p className="text-sm font-medium">Approval Steps:</p>
                       <div className="space-y-1">
                         {template.steps?.map((step: any, index: number) => (
-                          <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <CheckCircle className="w-3 h-3" />
-                            <span>{step.stepName}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {step.approverRole}
-                            </Badge>
+                          <div key={index} className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>{step.stepName}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {step.approverRole}
+                              </Badge>
+                            </div>
+                            {step.notificationChannels && step.notificationChannels.length > 0 && (
+                              <div className="flex items-center gap-1 ml-5">
+                                {step.notificationChannels
+                                  .filter((channel: any) => channel.enabled)
+                                  .map((channel: any, channelIndex: number) => (
+                                  <div key={channelIndex} className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    {getNotificationIcon(channel.type)}
+                                    <span className="text-xs">
+                                      {channel.type === 'ui' ? 'Dashboard' : 
+                                       channel.type === 'email' ? 'Email' : 
+                                       'Slack'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -426,140 +381,29 @@ export default function TemplatesPage() {
             </Card>
           )}
 
-          {/* Custom Template Creation Dialog */}
+          {/* Template Creation/Edit Dialog */}
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingTemplate ? 'Edit Template' : 'Create Custom Template'}
                 </DialogTitle>
                 <DialogDescription>
                   {editingTemplate ? 
-                    'Update your approval workflow template' : 
-                    'Build a custom approval workflow template with multiple steps'
+                    'Update your approval workflow template with notification channels' : 
+                    'Build a custom approval workflow template with multiple steps and notification channels'
                   }
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-6">
-                {/* Basic Info */}
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="templateName">Template Name</Label>
-                    <Input
-                      id="templateName"
-                      value={templateName}
-                      onChange={(e) => setTemplateName(e.target.value)}
-                      placeholder="e.g., IT Request Approval"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe when this template should be used..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="deadline">Deadline (hours)</Label>
-                    <Input
-                      id="deadline"
-                      type="number"
-                      value={deadlineHours}
-                      onChange={(e) => setDeadlineHours(e.target.value)}
-                      placeholder="24"
-                      min="1"
-                      max="720"
-                    />
-                  </div>
-                </div>
-
-                {/* Approval Steps */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-medium">Approval Steps</Label>
-                    <Button onClick={addStep} size="sm" variant="outline">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Step
-                    </Button>
-                  </div>
-
-                  {steps.map((step, index) => (
-                    <Card key={index} className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-medium">Step {index + 1}</h4>
-                        {steps.length > 1 && (
-                          <Button
-                            onClick={() => removeStep(index)}
-                            size="sm"
-                            variant="ghost"
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <div>
-                          <Label>Step Name</Label>
-                          <Input
-                            value={step.stepName}
-                            onChange={(e) => updateStep(index, 'stepName', e.target.value)}
-                            placeholder="e.g., Manager Review"
-                          />
-                        </div>
-
-                        <div>
-                          <Label>Approver Role</Label>
-                          <Input
-                            value={step.approverRole}
-                            onChange={(e) => updateStep(index, 'approverRole', e.target.value)}
-                            placeholder="e.g., manager, director"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <Label>Approver Email (optional)</Label>
-                          <Input
-                            value={step.approverEmail}
-                            onChange={(e) => updateStep(index, 'approverEmail', e.target.value)}
-                            placeholder="e.g., manager@company.com"
-                            type="email"
-                          />
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                  resetForm()
+              <TemplateForm
+                onSave={handleSaveTemplate}
+                onCancel={() => {
+                  setEditingTemplate(null)
                   setShowDialog(false)
-                }}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleCreateTemplate} 
-                  disabled={creating || !templateName || !description || steps.some(s => !s.stepName || !s.approverRole)}
-                >
-                  {creating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {editingTemplate ? 'Updating...' : 'Creating...'}
-                    </>
-                  ) : (
-                    editingTemplate ? 'Update Template' : 'Create Template'
-                  )}
-                </Button>
-              </DialogFooter>
+                }}
+                initialData={editingTemplate}
+              />
             </DialogContent>
           </Dialog>
         </div>

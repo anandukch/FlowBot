@@ -426,8 +426,12 @@ export class WorkflowService {
     async getPendingWorkflowsForApprover(approverEmail: string): Promise<IWorkflow[]> {
         return await Workflow.find({
             status: { $in: [WorkflowStatus.PENDING, WorkflowStatus.IN_PROGRESS] },
-            'steps.approverEmail': approverEmail,
-            'steps.status': StepStatus.PENDING
+            steps: {
+                $elemMatch: {
+                    approverEmail: approverEmail,
+                    status: { $in: [StepStatus.PENDING, StepStatus.DELEGATED] }
+                }
+            }
         }).sort({ deadline: 1 }).exec();
     }
 

@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { IApprovalStep, IFormField, FieldType, StepStatus } from './workflow.model';
+import { IApprovalStep, IFormField, FieldType, StepStatus, INotificationChannel } from './workflow.model';
 
 export interface IApprovalTemplate extends Document {
     templateId: string;
@@ -38,12 +38,30 @@ const FormFieldSchema = new Schema<IFormField>({
     defaultValue: Schema.Types.Mixed
 }, { _id: false });
 
+// Notification channel schema
+const NotificationChannelSchema = new Schema<INotificationChannel>({
+    type: {
+        type: String,
+        enum: ['email', 'slack', 'ui'],
+        required: true
+    },
+    target: {
+        type: String,
+        required: true
+    },
+    enabled: {
+        type: Boolean,
+        default: true
+    }
+}, { _id: false });
+
 // Approval step schema for templates
 const TemplateStepSchema = new Schema<IApprovalStep>({
     stepNumber: { type: Number, required: true },
     stepName: { type: String, required: true },
     approverRole: { type: String, required: true },
     approverEmail: String,
+    notificationChannels: [NotificationChannelSchema],
     status: { 
         type: String, 
         enum: Object.values(StepStatus),
@@ -57,8 +75,7 @@ const ApprovalTemplateSchema = new Schema<IApprovalTemplate>({
     templateId: {
         type: String,
         required: true,
-        unique: true,
-        index: true
+        unique: true
     },
     templateName: {
         type: String,
@@ -133,6 +150,13 @@ ApprovalTemplateSchema.statics.createDefaultTemplates = async function(agentId: 
                     stepName: 'Manager Approval',
                     approverRole: 'manager',
                     status: StepStatus.PENDING,
+                    notificationChannels: [
+                        {
+                            type: 'ui',
+                            target: 'dashboard',
+                            enabled: true
+                        }
+                    ],
                     formFields: [
                         {
                             id: 'comments',

@@ -1,5 +1,6 @@
-import { Router } from "express";
-import { WorkflowService } from "../services/workflow.service";
+import express, { Router } from 'express';
+import { WorkflowService } from '../services/workflow.service';
+import { approvalFlowService } from '../services/approval-flow.service';
 import ApprovalTemplate from "../models/approval-template.model";
 import authMiddleware from "../middlewares/authMiddleware";
 
@@ -169,12 +170,7 @@ export function createApprovalRoutes(): Router {
                 });
             }
 
-            const workflow = await workflowService.approveStep({
-                workflowId,
-                approver,
-                response,
-                formResponse
-            });
+            const workflow = await approvalFlowService.approveAndProgress(workflowId, approver, response);
 
             return res.json({
                 success: true,
@@ -211,12 +207,7 @@ export function createApprovalRoutes(): Router {
                 });
             }
 
-            const workflow = await workflowService.rejectStep({
-                workflowId,
-                approver,
-                response,
-                formResponse
-            });
+            const workflow = await approvalFlowService.rejectWorkflow(workflowId, approver, response);
 
             return res.json({
                 success: true,
@@ -251,12 +242,7 @@ export function createApprovalRoutes(): Router {
                 });
             }
 
-            const workflow = await workflowService.delegateApproval({
-                workflowId,
-                currentApprover,
-                delegateTo,
-                reason
-            });
+            const workflow = await approvalFlowService.delegateApproval(workflowId, currentApprover, delegateTo, reason);
 
             return res.json({
                 success: true,
@@ -583,33 +569,7 @@ export function createApprovalRoutes(): Router {
         }
     });
 
-    // ==================== STATISTICS ====================
-
-    /**
-     * Get workflow statistics (all agents)
-     * GET /api/approvals/stats
-     */
-    router.get("/stats", authMiddleware(), async (req, res) => {
-        try {
-            const stats = await workflowService.getWorkflowStats();
-
-            return res.json({
-                success: true,
-                stats
-            });
-        } catch (error: any) {
-            console.error("Get workflow stats error:", error);
-            return res.status(500).json({
-                success: false,
-                message: error.message || "Failed to get workflow statistics"
-            });
-        }
-    });
-
-    /**
-     * Get workflow statistics by agent
-     * GET /api/approvals/stats/:agentId
-     */
+   
     router.get("/stats/:agentId", authMiddleware(), async (req, res) => {
         try {
             const { agentId } = req.params;
