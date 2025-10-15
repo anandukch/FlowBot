@@ -223,9 +223,9 @@ export default function LandingPage() {
               {/* Feature Showcase with Staggered Animation */}
               <div className="space-y-32">
                 {/* Widget Customization - Left Aligned */}
-                <div className="flex flex-col lg:flex-row items-center gap-12 animate-slide-in-left">
+                <div className="flex flex-col lg:flex-row items-center gap-12 animate-on-scroll-left">
                   <div className="lg:w-1/2 space-y-6">
-                    <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 rounded-full border border-blue-500/20">
+                    <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 rounded-full border border-blue-500/20 animate-float">
                       <span className="text-blue-400 text-sm font-medium">Step 1</span>
                     </div>
                     <h3 className="text-3xl md:text-4xl font-bold text-white">
@@ -236,13 +236,13 @@ export default function LandingPage() {
                       Adjust colors, positioning, and behavior with real-time preview to match your brand perfectly.
                     </p>
                     <div className="flex flex-wrap gap-3">
-                      <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Real-time Preview</span>
-                      <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Brand Matching</span>
-                      <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Easy Setup</span>
+                      <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm hover-lift">Real-time Preview</span>
+                      <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm hover-lift">Brand Matching</span>
+                      <span className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm hover-lift">Easy Setup</span>
                     </div>
                   </div>
                   <div className="lg:w-1/2">
-                    <div className="group relative">
+                    <div className="group relative hover-glow">
                       <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-500 opacity-0 group-hover:opacity-100"></div>
                       <div className="relative bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700 hover:border-blue-500/50 transition-all duration-500 group-hover:transform group-hover:scale-105">
                         <div className="rounded-xl overflow-hidden border border-slate-600 hover:border-blue-400/50 transition-all duration-500">
