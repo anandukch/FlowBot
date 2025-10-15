@@ -24,15 +24,15 @@ export function createUserRoutes(): Router {
                     message: "User not found",
                 });
             }
-            
-            return res.json({ 
-                success: true, 
+
+            return res.json({
+                success: true,
                 config: user.config || {},
                 user: {
                     id: user._id,
                     email: user.email,
                     agentId: user.agentId,
-                }
+                },
             });
         } catch (error) {
             console.error("Get Slack config error:", error);
@@ -46,9 +46,23 @@ export function createUserRoutes(): Router {
     // Update Slack configuration
     router.post("/slack-config", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+            const { userId } = tokenData;
+            const user = await User.findById(userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
             const { slackBotToken, slackBotId, slackChannel } = req.body;
-            
+
             if (!slackBotToken || !slackBotId || !slackChannel) {
                 return res.status(400).json({
                     success: false,
@@ -56,18 +70,19 @@ export function createUserRoutes(): Router {
                 });
             }
 
-            user.config = { 
+            user.config = {
                 ...user.config,
-                slackBotToken, 
-                slackBotId, 
-                slackChannel 
+                slackBotToken,
+                slackBotId,
+                slackChannel,
             };
+
             await user.save();
-            
-            return res.json({ 
-                success: true, 
+
+            return res.json({
+                success: true,
                 message: "Slack configuration saved successfully",
-                config: user.config
+                config: user.config,
             });
         } catch (error) {
             console.error("Update Slack config error:", error);
@@ -82,15 +97,15 @@ export function createUserRoutes(): Router {
     router.get("/kb", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
-            
-            return res.json({ 
-                success: true, 
+
+            return res.json({
+                success: true,
                 kb: user.kb || {},
                 user: {
                     id: user._id,
                     email: user.email,
                     agentId: user.agentId,
-                }
+                },
             });
         } catch (error) {
             console.error("Get KB error:", error);
@@ -106,7 +121,7 @@ export function createUserRoutes(): Router {
         try {
             const user = (req as AuthRequest).user;
             const { kb } = req.body;
-            
+
             if (!kb) {
                 return res.status(400).json({
                     success: false,
@@ -116,7 +131,7 @@ export function createUserRoutes(): Router {
 
             user.kb = kb;
             await user.save();
-            
+
             return res.json({
                 success: true,
                 message: "Knowledge base updated successfully",
@@ -125,7 +140,7 @@ export function createUserRoutes(): Router {
                     id: user._id,
                     email: user.email,
                     agentId: user.agentId,
-                }
+                },
             });
         } catch (error) {
             console.error("Update KB error:", error);
@@ -140,10 +155,10 @@ export function createUserRoutes(): Router {
     router.delete("/kb", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
-            
+
             user.kb = "";
             await user.save();
-            
+
             return res.json({
                 success: true,
                 message: "Knowledge base deleted successfully",
@@ -161,7 +176,7 @@ export function createUserRoutes(): Router {
     router.get("/profile", authMiddleware(), async (req, res) => {
         try {
             const user = (req as AuthRequest).user;
-            
+
             const profileData = {
                 user: {
                     id: user._id,
@@ -169,14 +184,14 @@ export function createUserRoutes(): Router {
                     agentId: user.agentId,
                 },
                 hasKB: !!user.kb,
-                hasSlackConfig: !!(user.config?.slackBotToken),
+                hasSlackConfig: !!user.config?.slackBotToken,
                 settings: {
                     notifications: true, // TODO: Add user preferences
-                    theme: 'light',
-                    language: 'en'
-                }
+                    theme: "light",
+                    language: "en",
+                },
             };
-            
+
             return res.json({
                 success: true,
                 profile: profileData,
@@ -195,14 +210,14 @@ export function createUserRoutes(): Router {
         try {
             const user = (req as AuthRequest).user;
             const { settings } = req.body;
-            
+
             // TODO: Add settings to user model
             // user.settings = { ...user.settings, ...settings };
             // await user.save();
-            
+
             return res.json({
                 success: true,
-                message: "Settings updated successfully"
+                message: "Settings updated successfully",
             });
         } catch (error) {
             console.error("Update settings error:", error);
@@ -231,15 +246,15 @@ export function createUserRoutes(): Router {
                     message: "User not found",
                 });
             }
-            
-            return res.json({ 
-                success: true, 
+
+            return res.json({
+                success: true,
                 config: user.widgetConfig || {},
                 user: {
                     id: user._id,
                     email: user.email,
                     agentId: user.agentId,
-                }
+                },
             });
         } catch (error) {
             console.error("Get widget config error:", error);
@@ -270,7 +285,7 @@ export function createUserRoutes(): Router {
             }
 
             const { config } = req.body;
-            
+
             if (!config) {
                 return res.status(400).json({
                     success: false,
@@ -280,11 +295,11 @@ export function createUserRoutes(): Router {
 
             user.widgetConfig = config;
             await user.save();
-            
+
             return res.json({
                 success: true,
                 message: "Widget configuration updated successfully",
-                config: user.widgetConfig
+                config: user.widgetConfig,
             });
         } catch (error) {
             console.error("Update widget config error:", error);
