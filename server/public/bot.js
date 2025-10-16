@@ -33,7 +33,7 @@
     // Fetch user's widget configuration
     const fetchWidgetConfig = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/widget/config/${agentId}`);
+        const response = await fetch(`https://flowbot.pynex.space/api/widget/config/${agentId}`);
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.config) {
@@ -692,7 +692,7 @@
       retryBtn.classList.add('loading');
       
       try {
-        const response = await fetch(`http://localhost:3001/api/chat/workflows/${userId}`, {
+        const response = await fetch(`https://flowbot.pynex.space/api/chat/workflows/${userId}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -865,7 +865,7 @@
       }
   
       try {
-        const res = await fetch('http://localhost:3001/api/chat', {
+        const res = await fetch('https://flowbot.pynex.space/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text, conversationId: userId, agentId })
@@ -908,7 +908,7 @@
     });
   
     function connectSSE() {
-      const eventSource = new EventSource(`http://localhost:3001/api/chat/events/${userId}`);
+      const eventSource = new EventSource(`https://flowbot.pynex.space/api/chat/events/${userId}`);
       
       eventSource.onmessage = (event) => {
         try {
