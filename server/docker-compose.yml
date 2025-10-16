@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  flowbot-server:
+    # Use GitHub Container Registry image for production
+    image: ghcr.io/${GITHUB_REPOSITORY:-anandukch/flowbot}-server:latest
+    container_name: flowbot_server
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # Environment variables from .env.example
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - MONGO_URI=${MONGO_URI:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
+      - GOOGLE_USER_INFO_URL=${GOOGLE_USER_INFO_URL:-}
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:3000}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - JWT_EXPIRES=${JWT_EXPIRES:-24h}
+    ports:
+      - "3001:3001"
+    networks:
+      - flowbot_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      # Mount env file if needed
+      - ./.env:/app/.env:ro
+
+networks:
+  flowbot_network:
+    driver: bridge
+
+volumes:
+  flowbot_data:
