@@ -156,10 +156,21 @@
 
 1. **Customer Request**: User asks for something requiring approval
 2. **AI Detection**: System identifies approval-needed requests
-3. **Workflow Creation**: Automatic approval workflow starts
-4. **Notification**: Approvers get notified via Slack/Dashboard
-5. **Decision**: Approve/Reject/Delegate the request
-6. **Customer Update**: Real-time notification to customer
+3. **Template Selection**: System automatically uses the **default template** you've set
+4. **Workflow Creation**: Approval workflow starts based on default template steps
+5. **Notification**: Approvers get notified via Slack/Dashboard (as configured in template)
+6. **Decision**: Approve/Reject/Delegate the request
+7. **Customer Update**: Real-time notification to customer
+
+### Template-Driven Workflow
+
+**Important:** When a message escalates and requires approval, FlowBot automatically uses whichever template you've marked as **"Default"**.
+
+**The Flow:**
+- Customer sends request → AI detects need for approval → Default template is applied → Workflow follows template steps
+- If no default template is set, the system may not escalate properly
+- You can have multiple templates, but only one can be marked as default
+- The default template determines: approver roles, notification channels, deadlines, and workflow steps
 
 ### Approval Dashboard
 
@@ -311,10 +322,13 @@ Templates define reusable approval workflows that automatically trigger when cer
 **Available Actions:**
 - **Edit**: Modify existing templates
 - **Delete**: Remove unused templates
-- **Set Default**: Mark as primary template
+- **Set Default**: Mark as primary template (CRITICAL - this template will be used for all escalations)
 - **Activate/Deactivate**: Enable or disable templates
 
-**Default Templates:**
+**Default Template (Important):**
+- **Only ONE template can be marked as default at a time**
+- **The default template is automatically used when messages escalate**
+- **Without a default template, escalations may not work properly**
 - System can create common templates automatically
 - Includes standard approval workflows
 - Customizable after creation
