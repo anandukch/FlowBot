@@ -3,7 +3,7 @@ version: '3.8'
 services:
   flowbot-server:
     # Use GitHub Container Registry image for production
-    image: ghcr.io/${GITHUB_REPOSITORY:-anandukch/flowbot}-server:latest
+    image: ghcr.io/anandukch/flowbot-server:latest
     container_name: flowbot_server
     environment:
       - NODE_ENV=production
