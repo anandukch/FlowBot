@@ -10,16 +10,19 @@ export function createAuthRoutes(): Router {
 
     // Cookie options for secure authentication
     const cookieOptions: CookieOptions = {
-        httpOnly: process.env.NODE_ENV === "production",
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30), // 30 days
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        httpOnly: process.env.NODE_ENV === "production" ? true : false,
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // "none" for cross-origin in production
+        secure: process.env.NODE_ENV === "production" ? true : false,
     };
 
 
     // Sign out
     router.post("/signout", (req, res) => {
-        res.clearCookie("accessToken", { expires: new Date(0) });
+        res.clearCookie("accessToken", { 
+            ...cookieOptions,
+            expires: new Date(0) 
+        });
         return res.json({
             message: "User signed out successfully",
         });
