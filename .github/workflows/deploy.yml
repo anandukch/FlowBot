@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_SERVER: ${{ github.repository }}-server
+  IMAGE_NAME_SERVER: ${{ github.repository_owner }}/flowbot-server
 
 jobs:
   # Build and Test Server
@@ -106,7 +106,7 @@ jobs:
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             # Pull latest server image
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_SERVER }}:latest
+            docker pull ghcr.io/anandukch/flowbot-server:latest
             
             # Stop existing containers
             docker-compose down
