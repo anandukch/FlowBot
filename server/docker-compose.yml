@@ -16,7 +16,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
       - GOOGLE_USER_INFO_URL=${GOOGLE_USER_INFO_URL:-}
-      - CLIENT_URL=${CLIENT_URL:-http://localhost:3000}
+      - CLIENT_URL=${CLIENT_URL:-https://flowbot-omega.vercel.app}
       - JWT_SECRET=${JWT_SECRET:-}
       - JWT_EXPIRES=${JWT_EXPIRES:-24h}
     ports:

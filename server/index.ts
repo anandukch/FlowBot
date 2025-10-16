@@ -30,15 +30,25 @@ export const workflowEvents = new EventEmitter();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Simple CORS - allow all origins
+// CORS configuration for production
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow any origin
-    callback(null, origin || "*");
-  },
+  origin: [
+    'https://flowbot-omega.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://flowbot.pynex.space'
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'Cookie',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  exposedHeaders: ['Set-Cookie']
 }));
 
 app.use(express.json());
