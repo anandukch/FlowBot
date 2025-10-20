@@ -24,6 +24,16 @@ FlowBot is a next-generation **AI-powered customer support platform** that revol
 
 ---
 
+## 🎬 **Demo Video**
+
+<div align="left">
+
+[🎥 **Click here to watch FlowBot Demo**](https://youtu.be/rnnEjoGMGME)
+
+</div>
+
+---
+
 ## ✨ **Key Features**
 
 ### 🤖 **Intelligent AI Assistant**
