@@ -54,7 +54,7 @@ export function createChatRoutes(): Router {
                     });
                 } else {
                     const prompt = "Please share a valid email address (for example: name@example.com) so our support team can follow up.";
-                    await memoryService.addMessage(conversationId, "assistant", prompt);
+                    await memoryService.addMessage(conversationId, "assistant", prompt, agentId);
                     return res.json({
                         success: false,
                         message: prompt,
