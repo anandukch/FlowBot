@@ -32,6 +32,14 @@ FlowBot is a next-generation **AI-powered customer support platform** that revol
 
 </div>
 
+## 🚀 **Try FlowBot Live**
+
+<div align="left">
+
+[🌐 **Launch FlowBot App**](https://flowbot-omega.vercel.app/) - *Experience FlowBot in action!*
+
+</div>
+
 ---
 
 ## ✨ **Key Features**
