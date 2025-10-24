@@ -95,7 +95,21 @@ export function createUserRoutes(): Router {
     // Get knowledge base
     router.get("/kb", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+            const { userId } = tokenData;
+            const user = await User.findById(userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
 
             return res.json({
                 success: true,
@@ -118,7 +132,21 @@ export function createUserRoutes(): Router {
     // Add/Update knowledge base
     router.post("/kb", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+            const { userId } = tokenData;
+            const user = await User.findById(userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
             const { kb } = req.body;
 
             if (!kb) {
@@ -153,7 +181,21 @@ export function createUserRoutes(): Router {
     // Delete knowledge base
     router.delete("/kb", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+            const { userId } = tokenData;
+            const user = await User.findById(userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
 
             user.kb = "";
             await user.save();
@@ -174,7 +216,21 @@ export function createUserRoutes(): Router {
     // Get user profile and settings
     router.get("/profile", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+            const { userId } = tokenData;
+            const user = await User.findById(userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
 
             const profileData = {
                 user: {
@@ -207,7 +263,21 @@ export function createUserRoutes(): Router {
     // Update user settings
     router.post("/settings", authMiddleware(), async (req, res) => {
         try {
-            const user = (req as AuthRequest).user;
+            const tokenData = (req as RequestWithInfo).user;
+            if (!tokenData) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Not authenticated",
+                });
+            }
+            const { userId } = tokenData;
+            const user = await User.findById(userId).exec();
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
             const { settings } = req.body;
 
             // TODO: Add settings to user model

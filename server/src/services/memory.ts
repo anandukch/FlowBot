@@ -22,7 +22,7 @@ export class MemoryService {
         return await this.conversationService.getConversationHistory(conversationId);
     }
 
-    async addMessage(conversationId: string, role: "user" | "assistant", content: string, agentId?: string, config?: any): Promise<void> {
+    async addMessage(conversationId: string, role: "user" | "assistant", content: string, agentId: string, config?: any): Promise<void> {
         await this.conversationService.addMessage(conversationId, role, content, agentId, config);
     }
 
@@ -49,5 +49,9 @@ export class MemoryService {
 
     async getConversationById(conversationId: string) {
         return await this.conversationService.getConversationById(conversationId);
+    }
+    
+    async getByConversationIdAndAgentId(conversationId: string, agentId: string) {
+        return await this.conversationService.getByConversationIdAndAgentId(conversationId, agentId);
     }
 }

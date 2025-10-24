@@ -103,7 +103,7 @@ export class AgentService {
         }
     }
 
-    async invoke(input: string, conversationId: string = "default", agentId?: string): Promise<AgentResult> {
+    async invoke(input: string, conversationId: string = "default", agentId: string): Promise<AgentResult> {
         if (!this.client) {
             throw new Error("Agent not initialized. Call initialize() first.");
         }
@@ -152,9 +152,9 @@ export class AgentService {
             const parsedResponse = JSON.parse(responseContent);
             const validatedResponse = agentResponseSchema.parse(parsedResponse);
 
-            await this.memoryService.addMessage(conversationId, "assistant", validatedResponse.response);
+            await this.memoryService.addMessage(conversationId, "assistant", validatedResponse.response, agentId);
             if (validatedResponse.needsEscalation) {
-                await this.handleEscalation(conversationId, input, validatedResponse.escalationReason || "User needs human support");
+                await this.handleEscalation(conversationId, input, validatedResponse.escalationReason || "User needs human support", agentId);
             }
 
             return {
@@ -175,14 +175,13 @@ export class AgentService {
         }
     }
 
-    private async handleEscalation(conversationId: string, originalMessage: string, reason: string) {
+    private async handleEscalation(conversationId: string, originalMessage: string, reason: string, agentId: string) {
         try {
             console.log(`🚨 Escalating conversation ${conversationId}: ${reason}`);
             
             // Get conversation to check if user provided email and agentId
-            const conversation = await this.memoryService.getConversationById(conversationId);
+            const conversation = await this.memoryService.getByConversationIdAndAgentId(conversationId, agentId);
             const hasEmail = conversation?.config?.email;
-            const agentId = conversation?.agentId || 'default';
             
             // Create workflow using the approval flow service
             // This will automatically send Slack notifications if the first step has a Slack channel
@@ -226,7 +225,8 @@ export class AgentService {
             await this.memoryService.addMessage(
                 conversationId, 
                 "assistant", 
-                escalationMessage
+                escalationMessage,
+                agentId,
             );
 
         } catch (error) {

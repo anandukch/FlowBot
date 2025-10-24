@@ -32,12 +32,13 @@ const PORT = process.env.PORT || 3001;
 
 // CORS configuration for production
 app.use(cors({
-  origin: [
-    'https://flowbot-omega.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://flowbot.pynex.space'
-  ],
+//   origin: [
+//     'https://flowbot-omega.vercel.app',
+//     'http://localhost:3000',
+//     'http://localhost:3001',
+//     'https://flowbot.pynex.space'
+//   ],
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [

@@ -1,4 +1,4 @@
-import Conversation, { IConversation, IMessage } from '../models/conversation.model';
+import Conversation, { IConversation, IMessage } from "../models/conversation.model";
 
 export interface SimpleMessage {
     role: "user" | "assistant";
@@ -23,11 +23,9 @@ export class ConversationService {
                 return "";
             }
 
-            return conversation.messages
-                .map((msg: IMessage) => `${msg.role}: ${msg.content}`)
-                .join("\n");
+            return conversation.messages.map((msg: IMessage) => `${msg.role}: ${msg.content}`).join("\n");
         } catch (error) {
-            console.error('Error getting conversation history:', error);
+            console.error("Error getting conversation history:", error);
             return "";
         }
     }
@@ -45,10 +43,10 @@ export class ConversationService {
             return conversation.messages.map((msg: IMessage) => ({
                 role: msg.role,
                 content: msg.content,
-                timestamp: msg.timestamp
+                timestamp: msg.timestamp,
             }));
         } catch (error) {
-            console.error('Error getting conversation messages:', error);
+            console.error("Error getting conversation messages:", error);
             return [];
         }
     }
@@ -56,40 +54,34 @@ export class ConversationService {
     /**
      * Add a message to conversation
      */
-    async addMessage(
-        conversationId: string, 
-        role: "user" | "assistant", 
-        content: string,
-        agentId?: string,
-        config?: any
-    ): Promise<void> {
+    async addMessage(conversationId: string, role: "user" | "assistant", content: string, agentId?: string, config?: any): Promise<void> {
         try {
             const message: IMessage = {
                 role,
                 content,
-                timestamp: new Date()
+                timestamp: new Date(),
             };
 
             // Find existing conversation or create new one
             let conversation = await Conversation.findOne({ conversationId }).exec();
-            
+
             if (!conversation) {
                 // Create new conversation
                 conversation = new Conversation({
                     conversationId,
                     messages: [message],
-                    agentId: agentId || '',
-                    config: config || {}
+                    agentId: agentId || "",
+                    config: config || {},
                 });
             } else {
                 // Add message to existing conversation
                 conversation.messages.push(message);
-                
+
                 // Keep only recent messages to prevent unlimited growth
                 if (conversation.messages.length > this.maxMessages) {
                     conversation.messages = conversation.messages.slice(-this.maxMessages);
                 }
-                
+
                 // Update metadata if provided
                 if (agentId && !conversation.agentId) {
                     conversation.agentId = agentId;
@@ -101,7 +93,7 @@ export class ConversationService {
 
             await conversation.save();
         } catch (error) {
-            console.error('Error adding message to conversation:', error);
+            console.error("Error adding message to conversation:", error);
             throw error;
         }
     }
@@ -111,13 +103,9 @@ export class ConversationService {
      */
     async getConversationsByEmail(email: string, limit: number = 10): Promise<IConversation[]> {
         try {
-            return await Conversation
-                .find({ 'config.email': email })
-                .sort({ updatedAt: -1 })
-                .limit(limit)
-                .exec();
+            return await Conversation.find({ "config.email": email }).sort({ updatedAt: -1 }).limit(limit).exec();
         } catch (error) {
-            console.error('Error getting conversations by email:', error);
+            console.error("Error getting conversations by email:", error);
             return [];
         }
     }
@@ -127,13 +115,9 @@ export class ConversationService {
      */
     async getAgentConversations(agentId: string, limit: number = 10): Promise<IConversation[]> {
         try {
-            return await Conversation
-                .find({ agentId })
-                .sort({ updatedAt: -1 })
-                .limit(limit)
-                .exec();
+            return await Conversation.find({ agentId }).sort({ updatedAt: -1 }).limit(limit).exec();
         } catch (error) {
-            console.error('Error getting agent conversations:', error);
+            console.error("Error getting agent conversations:", error);
             return [];
         }
     }
@@ -146,7 +130,7 @@ export class ConversationService {
             const result = await Conversation.deleteOne({ conversationId }).exec();
             return result.deletedCount > 0;
         } catch (error) {
-            console.error('Error deleting conversation:', error);
+            console.error("Error deleting conversation:", error);
             return false;
         }
     }
@@ -158,14 +142,14 @@ export class ConversationService {
         try {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - daysOld);
-            
+
             const result = await Conversation.deleteMany({
-                updatedAt: { $lt: cutoffDate }
+                updatedAt: { $lt: cutoffDate },
             }).exec();
-            
+
             return result.deletedCount || 0;
         } catch (error) {
-            console.error('Error clearing old conversations:', error);
+            console.error("Error clearing old conversations:", error);
             return 0;
         }
     }
@@ -184,16 +168,16 @@ export class ConversationService {
                     $group: {
                         _id: null,
                         totalConversations: { $sum: 1 },
-                        totalMessages: { $sum: { $size: "$messages" } }
-                    }
-                }
+                        totalMessages: { $sum: { $size: "$messages" } },
+                    },
+                },
             ]).exec();
 
             if (stats.length === 0) {
                 return {
                     totalConversations: 0,
                     totalMessages: 0,
-                    averageMessagesPerConversation: 0
+                    averageMessagesPerConversation: 0,
                 };
             }
 
@@ -201,14 +185,14 @@ export class ConversationService {
             return {
                 totalConversations,
                 totalMessages,
-                averageMessagesPerConversation: totalMessages / totalConversations
+                averageMessagesPerConversation: totalMessages / totalConversations,
             };
         } catch (error) {
-            console.error('Error getting conversation stats:', error);
+            console.error("Error getting conversation stats:", error);
             return {
                 totalConversations: 0,
                 totalMessages: 0,
-                averageMessagesPerConversation: 0
+                averageMessagesPerConversation: 0,
             };
         }
     }
@@ -217,9 +201,17 @@ export class ConversationService {
         try {
             return await Conversation.findOne({ conversationId }).exec();
         } catch (error) {
-            console.error('Error getting conversation by ID:', error);
+            console.error("Error getting conversation by ID:", error);
             return null;
         }
     }
 
+    async getByConversationIdAndAgentId(conversationId: string, agentId: string): Promise<IConversation | null> {
+        try {
+            return await Conversation.findOne({ conversationId, agentId }).exec();
+        } catch (error) {
+            console.error("Error getting conversation by ID:", error);
+            return null;
+        }
+    }
 }
